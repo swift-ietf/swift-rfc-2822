@@ -62,27 +62,27 @@ extension RFC_2822.Address: Binary.ASCII.Serializable {
     public static func serialize<Buffer>(
         ascii address: RFC_2822.Address,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == UInt8 {
+    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
         switch address.kind {
         case .mailbox(let mailbox):
             buffer.append(ascii: mailbox)
 
         case .group(let displayName, let mailboxes):
             // Group format: "Display Name: mailbox1, mailbox2;"
-            buffer.append(utf8: displayName)
-            buffer.append(.ascii.colon)
+            buffer.append(contentsOf: displayName.utf8)
+            buffer.append(ASCII.Code.colon)
 
             for (index, mailbox) in mailboxes.enumerated() {
                 if index > 0 {
-                    buffer.append(.ascii.comma)
-                    buffer.append(.ascii.space)
+                    buffer.append(ASCII.Code.comma)
+                    buffer.append(ASCII.Code.space)
                 } else {
-                    buffer.append(.ascii.space)
+                    buffer.append(ASCII.Code.space)
                 }
                 buffer.append(ascii: mailbox)
             }
 
-            buffer.append(.ascii.semicolon)
+            buffer.append(ASCII.Code.semicolon)
         }
     }
 
@@ -119,24 +119,26 @@ extension RFC_2822.Address: Binary.ASCII.Serializable {
     /// - Parameter bytes: The address as ASCII bytes
     /// - Throws: `Error` if parsing fails
     public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
-    where Bytes.Element == UInt8 {
+    where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
-        let byteArray = Array(bytes)
+        // Type-up: lift to ASCII.Code at the entry boundary so the body works
+        // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
+        let codeArray = Array<ASCII.Code>(bytes)
 
         // Check if this is a group (contains : but not within angle brackets)
         var inAngleBracket = false
         var colonIndex: Int?
         var semicolonIndex: Int?
 
-        for (index, byte) in byteArray.enumerated() {
-            if byte == UInt8.ascii.lessThanSign {
+        for (index, code) in codeArray.enumerated() {
+            if code == ASCII.Code.lessThanSign {
                 inAngleBracket = true
-            } else if byte == UInt8.ascii.greaterThanSign {
+            } else if code == ASCII.Code.greaterThanSign {
                 inAngleBracket = false
-            } else if byte == UInt8.ascii.colon && !inAngleBracket && colonIndex == nil {
+            } else if code == ASCII.Code.colon && !inAngleBracket && colonIndex == nil {
                 colonIndex = index
-            } else if byte == UInt8.ascii.semicolon && colonIndex != nil {
+            } else if code == ASCII.Code.semicolon && colonIndex != nil {
                 semicolonIndex = index
                 break
             }
@@ -149,65 +151,65 @@ extension RFC_2822.Address: Binary.ASCII.Serializable {
             }
 
             // Extract display name (everything before :) and trim whitespace
-            var displayNameBytes = Array(byteArray[..<colonIdx])
-            while !displayNameBytes.isEmpty
-                && (displayNameBytes.first == .ascii.space || displayNameBytes.first == .ascii.htab) {
-                displayNameBytes.removeFirst()
+            var displayNameCodes: [ASCII.Code] = Array(codeArray[..<colonIdx])
+            while !displayNameCodes.isEmpty
+                && (displayNameCodes.first == ASCII.Code.space || displayNameCodes.first == ASCII.Code.htab) {
+                displayNameCodes.removeFirst()
             }
-            while !displayNameBytes.isEmpty
-                && (displayNameBytes.last == .ascii.space || displayNameBytes.last == .ascii.htab) {
-                displayNameBytes.removeLast()
+            while !displayNameCodes.isEmpty
+                && (displayNameCodes.last == ASCII.Code.space || displayNameCodes.last == ASCII.Code.htab) {
+                displayNameCodes.removeLast()
             }
 
             var displayName: String
             // Remove quotes if present
-            if !displayNameBytes.isEmpty && displayNameBytes.first == .ascii.quotationMark
-                && displayNameBytes.last == .ascii.quotationMark {
+            if !displayNameCodes.isEmpty && displayNameCodes.first == ASCII.Code.quotationMark
+                && displayNameCodes.last == ASCII.Code.quotationMark {
                 displayName = String(
-                    decoding: displayNameBytes[1..<(displayNameBytes.count - 1)],
+                    decoding: displayNameCodes[1..<(displayNameCodes.count - 1)],
                     as: UTF8.self
                 )
             } else {
-                displayName = String(decoding: displayNameBytes, as: UTF8.self)
+                displayName = String(decoding: displayNameCodes, as: UTF8.self)
             }
 
             // Extract mailbox list (between : and ;)
-            let mailboxListStart = byteArray.index(after: colonIdx)
-            let mailboxListBytes = byteArray[mailboxListStart..<semiIdx]
+            let mailboxListStart = codeArray.index(after: colonIdx)
+            let mailboxListCodes = codeArray[mailboxListStart..<semiIdx]
 
             // Parse mailbox list (comma-separated)
             var mailboxes: [RFC_2822.Mailbox] = []
 
-            if !mailboxListBytes.isEmpty {
+            if !mailboxListCodes.isEmpty {
                 // Split by commas (but not within angle brackets or quotes)
-                var currentMailbox: [UInt8] = []
+                var currentMailbox: [ASCII.Code] = []
                 var inQuote = false
                 var inBracket = false
 
-                for byte in mailboxListBytes {
-                    if byte == UInt8.ascii.quotationMark && !inBracket {
+                for code in mailboxListCodes {
+                    if code == ASCII.Code.quotationMark && !inBracket {
                         inQuote.toggle()
-                        currentMailbox.append(byte)
-                    } else if byte == UInt8.ascii.lessThanSign && !inQuote {
+                        currentMailbox.append(code)
+                    } else if code == ASCII.Code.lessThanSign && !inQuote {
                         inBracket = true
-                        currentMailbox.append(byte)
-                    } else if byte == UInt8.ascii.greaterThanSign && !inQuote {
+                        currentMailbox.append(code)
+                    } else if code == ASCII.Code.greaterThanSign && !inQuote {
                         inBracket = false
-                        currentMailbox.append(byte)
-                    } else if byte == UInt8.ascii.comma && !inQuote && !inBracket {
+                        currentMailbox.append(code)
+                    } else if code == ASCII.Code.comma && !inQuote && !inBracket {
                         // End of this mailbox - trim whitespace
                         var trimmed = currentMailbox
                         while !trimmed.isEmpty
-                            && (trimmed.first == .ascii.space || trimmed.first == .ascii.htab) {
+                            && (trimmed.first == ASCII.Code.space || trimmed.first == ASCII.Code.htab) {
                             trimmed.removeFirst()
                         }
                         while !trimmed.isEmpty
-                            && (trimmed.last == .ascii.space || trimmed.last == .ascii.htab) {
+                            && (trimmed.last == ASCII.Code.space || trimmed.last == ASCII.Code.htab) {
                             trimmed.removeLast()
                         }
                         if !trimmed.isEmpty {
                             do {
-                                let mailbox = try RFC_2822.Mailbox(ascii: trimmed)
+                                let mailbox = try RFC_2822.Mailbox(ascii: Array<Byte>(trimmed))
                                 mailboxes.append(mailbox)
                             } catch {
                                 throw Error.invalidMailbox(error)
@@ -215,23 +217,23 @@ extension RFC_2822.Address: Binary.ASCII.Serializable {
                         }
                         currentMailbox = []
                     } else {
-                        currentMailbox.append(byte)
+                        currentMailbox.append(code)
                     }
                 }
 
                 // Don't forget the last mailbox - trim whitespace
                 var trimmed = currentMailbox
                 while !trimmed.isEmpty
-                    && (trimmed.first == .ascii.space || trimmed.first == .ascii.htab) {
+                    && (trimmed.first == ASCII.Code.space || trimmed.first == ASCII.Code.htab) {
                     trimmed.removeFirst()
                 }
                 while !trimmed.isEmpty
-                    && (trimmed.last == .ascii.space || trimmed.last == .ascii.htab) {
+                    && (trimmed.last == ASCII.Code.space || trimmed.last == ASCII.Code.htab) {
                     trimmed.removeLast()
                 }
                 if !trimmed.isEmpty {
                     do {
-                        let mailbox = try RFC_2822.Mailbox(ascii: trimmed)
+                        let mailbox = try RFC_2822.Mailbox(ascii: Array<Byte>(trimmed))
                         mailboxes.append(mailbox)
                     } catch {
                         throw Error.invalidMailbox(error)

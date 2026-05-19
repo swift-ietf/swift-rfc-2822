@@ -93,16 +93,16 @@ extension RFC_2822.Message.ResentBlock: Binary.ASCII.Serializable {
     static public func serialize<Buffer>(
         ascii block: RFC_2822.Message.ResentBlock,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == UInt8 {
+    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
 
         // Helper to add a field line
         func addField(_ name: String, _ value: String) {
             buffer.append(contentsOf: name.utf8)
-            buffer.append(.ascii.colon)
-            buffer.append(.ascii.space)
+            buffer.append(ASCII.Code.colon)
+            buffer.append(ASCII.Code.space)
             buffer.append(contentsOf: value.utf8)
-            buffer.append(.ascii.cr)
-            buffer.append(.ascii.lf)
+            buffer.append(ASCII.Code.cr)
+            buffer.append(ASCII.Code.lf)
         }
 
         // Resent-Date (required)
@@ -146,41 +146,43 @@ extension RFC_2822.Message.ResentBlock: Binary.ASCII.Serializable {
     /// ## Category Theory
     ///
     /// Parsing transformation:
-    /// - **Domain**: [UInt8] (ASCII bytes)
+    /// - **Domain**: [Byte] (ASCII bytes)
     /// - **Codomain**: RFC_2822.Message.ResentBlock (structured data)
     ///
     /// - Parameter bytes: The resent block as ASCII bytes
     /// - Throws: `Error` if parsing fails
     public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
-    where Bytes.Element == UInt8 {
+    where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
-        let byteArray = Array(bytes)
+        // Type-up: lift to ASCII.Code at the entry boundary so the body works
+        // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
+        let codeArray = Array<ASCII.Code>(bytes)
 
-        // Helper to trim whitespace from byte array
-        func trimWhitespace(_ arr: [UInt8]) -> [UInt8] {
+        // Helper to trim whitespace from code array
+        func trimWhitespace(_ arr: [ASCII.Code]) -> [ASCII.Code] {
             var result = arr
-            while !result.isEmpty && (result.first == .ascii.space || result.first == .ascii.htab) {
+            while !result.isEmpty && (result.first == ASCII.Code.space || result.first == ASCII.Code.htab) {
                 result.removeFirst()
             }
-            while !result.isEmpty && (result.last == .ascii.space || result.last == .ascii.htab) {
+            while !result.isEmpty && (result.last == ASCII.Code.space || result.last == ASCII.Code.htab) {
                 result.removeLast()
             }
             return result
         }
 
-        // Helper to split bytes on separator
-        func splitBytes(_ arr: [UInt8], on separator: UInt8) -> [[UInt8]] {
-            var result: [[UInt8]] = []
-            var current: [UInt8] = []
-            for byte in arr {
-                if byte == separator {
+        // Helper to split codes on separator
+        func splitCodes(_ arr: [ASCII.Code], on separator: ASCII.Code) -> [[ASCII.Code]] {
+            var result: [[ASCII.Code]] = []
+            var current: [ASCII.Code] = []
+            for code in arr {
+                if code == separator {
                     if !current.isEmpty {
                         result.append(current)
                     }
                     current = []
                 } else {
-                    current.append(byte)
+                    current.append(code)
                 }
             }
             if !current.isEmpty {
@@ -190,16 +192,16 @@ extension RFC_2822.Message.ResentBlock: Binary.ASCII.Serializable {
         }
 
         // Split into lines (on CR or LF)
-        var lines: [[UInt8]] = []
-        var currentLine: [UInt8] = []
-        for byte in byteArray {
-            if byte == .ascii.cr || byte == .ascii.lf {
+        var lines: [[ASCII.Code]] = []
+        var currentLine: [ASCII.Code] = []
+        for code in codeArray {
+            if code == ASCII.Code.cr || code == ASCII.Code.lf {
                 if !currentLine.isEmpty {
                     lines.append(currentLine)
                     currentLine = []
                 }
             } else {
-                currentLine.append(byte)
+                currentLine.append(code)
             }
         }
         if !currentLine.isEmpty {
@@ -216,12 +218,13 @@ extension RFC_2822.Message.ResentBlock: Binary.ASCII.Serializable {
 
         for line in lines {
             // Find colon separator
-            guard let colonIndex = line.firstIndex(of: .ascii.colon) else { continue }
+            guard let colonIndex = line.firstIndex(of: ASCII.Code.colon) else { continue }
 
-            let fieldNameBytes = trimWhitespace(Array(line[..<colonIndex]))
-            let fieldValueBytes = trimWhitespace(Array(line[(colonIndex + 1)...]))
+            let fieldNameCodes = trimWhitespace(Array(line[..<colonIndex]))
+            let fieldValueCodes = trimWhitespace(Array(line[(colonIndex + 1)...]))
 
-            let fieldName = String(decoding: fieldNameBytes, as: UTF8.self).lowercased()
+            let fieldName = String(decoding: fieldNameCodes, as: UTF8.self).lowercased()
+            let fieldValueBytes = Array<Byte>(fieldValueCodes)
 
             switch fieldName {
             case "resent-date":
@@ -229,11 +232,11 @@ extension RFC_2822.Message.ResentBlock: Binary.ASCII.Serializable {
 
             case "resent-from":
                 // Parse comma-separated mailboxes
-                let mailboxByteArrays = splitBytes(fieldValueBytes, on: .ascii.comma)
-                for mailboxBytes in mailboxByteArrays {
-                    let trimmed = trimWhitespace(mailboxBytes)
+                let mailboxCodeArrays = splitCodes(fieldValueCodes, on: ASCII.Code.comma)
+                for mailboxCodes in mailboxCodeArrays {
+                    let trimmed = trimWhitespace(mailboxCodes)
                     guard !trimmed.isEmpty else { continue }
-                    if let mailbox = try? RFC_2822.Mailbox(ascii: trimmed) {
+                    if let mailbox = try? RFC_2822.Mailbox(ascii: Array<Byte>(trimmed)) {
                         from.append(mailbox)
                     }
                 }
@@ -243,11 +246,11 @@ extension RFC_2822.Message.ResentBlock: Binary.ASCII.Serializable {
 
             case "resent-to":
                 var addresses: [RFC_2822.Address] = []
-                let addressByteArrays = splitBytes(fieldValueBytes, on: .ascii.comma)
-                for addressBytes in addressByteArrays {
-                    let trimmed = trimWhitespace(addressBytes)
+                let addressCodeArrays = splitCodes(fieldValueCodes, on: ASCII.Code.comma)
+                for addressCodes in addressCodeArrays {
+                    let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
-                    if let address = try? RFC_2822.Address(ascii: trimmed) {
+                    if let address = try? RFC_2822.Address(ascii: Array<Byte>(trimmed)) {
                         addresses.append(address)
                     }
                 }
@@ -255,11 +258,11 @@ extension RFC_2822.Message.ResentBlock: Binary.ASCII.Serializable {
 
             case "resent-cc":
                 var addresses: [RFC_2822.Address] = []
-                let addressByteArrays = splitBytes(fieldValueBytes, on: .ascii.comma)
-                for addressBytes in addressByteArrays {
-                    let trimmed = trimWhitespace(addressBytes)
+                let addressCodeArrays = splitCodes(fieldValueCodes, on: ASCII.Code.comma)
+                for addressCodes in addressCodeArrays {
+                    let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
-                    if let address = try? RFC_2822.Address(ascii: trimmed) {
+                    if let address = try? RFC_2822.Address(ascii: Array<Byte>(trimmed)) {
                         addresses.append(address)
                     }
                 }
@@ -267,11 +270,11 @@ extension RFC_2822.Message.ResentBlock: Binary.ASCII.Serializable {
 
             case "resent-bcc":
                 var addresses: [RFC_2822.Address] = []
-                let addressByteArrays = splitBytes(fieldValueBytes, on: .ascii.comma)
-                for addressBytes in addressByteArrays {
-                    let trimmed = trimWhitespace(addressBytes)
+                let addressCodeArrays = splitCodes(fieldValueCodes, on: ASCII.Code.comma)
+                for addressCodes in addressCodeArrays {
+                    let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
-                    if let address = try? RFC_2822.Address(ascii: trimmed) {
+                    if let address = try? RFC_2822.Address(ascii: Array<Byte>(trimmed)) {
                         addresses.append(address)
                     }
                 }
@@ -286,11 +289,11 @@ extension RFC_2822.Message.ResentBlock: Binary.ASCII.Serializable {
         }
 
         guard let ts = timestamp else {
-            throw Error.missingResentDate(String(decoding: byteArray, as: UTF8.self))
+            throw Error.missingResentDate(String(decoding: codeArray, as: UTF8.self))
         }
 
         guard !from.isEmpty else {
-            throw Error.missingResentFrom(String(decoding: byteArray, as: UTF8.self))
+            throw Error.missingResentFrom(String(decoding: codeArray, as: UTF8.self))
         }
 
         self.init(

@@ -63,13 +63,13 @@ extension RFC_2822 {
             guard !localPart.isEmpty else {
                 throw Error.invalidLocalPart("")
             }
-            try Self.validateLocalPart(localPart.utf8)
+            try Self.validateLocalPart(Array<ASCII.Code>(localPart.utf8))
 
             // Validate domain
             guard !domain.isEmpty else {
                 throw Error.invalidDomain("")
             }
-            try Self.validateDomain(domain.utf8)
+            try Self.validateDomain(Array<ASCII.Code>(domain.utf8))
 
             self.init(__unchecked: (), localPart: localPart, domain: domain)
         }
@@ -97,7 +97,7 @@ extension RFC_2822.AddrSpec: Binary.ASCII.Serializable {
     public static func serialize<Buffer>(
         ascii addrSpec: RFC_2822.AddrSpec,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == UInt8 {
+    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
         buffer.reserveCapacity(
             buffer.count + addrSpec.localPart.utf8.count + 1 + addrSpec.domain.utf8.count)
 
@@ -105,7 +105,7 @@ extension RFC_2822.AddrSpec: Binary.ASCII.Serializable {
         buffer.append(contentsOf: addrSpec.localPart.utf8)
 
         // @
-        buffer.append(.ascii.commercialAt)
+        buffer.append(ASCII.Code.commercialAt)
 
         // domain
         buffer.append(contentsOf: addrSpec.domain.utf8)
@@ -116,12 +116,12 @@ extension RFC_2822.AddrSpec: Binary.ASCII.Serializable {
     /// ## Category Theory
     ///
     /// Parsing transformation:
-    /// - **Domain**: [UInt8] (ASCII bytes)
+    /// - **Domain**: [Byte] (ASCII bytes)
     /// - **Codomain**: RFC_2822.AddrSpec (structured data)
     ///
     /// String parsing is derived composition:
     /// ```
-    /// String → [UInt8] (UTF-8) → AddrSpec
+    /// String → [Byte] (UTF-8) → AddrSpec
     /// ```
     ///
     /// ## RFC 2822 Section 3.4.1
@@ -135,13 +135,13 @@ extension RFC_2822.AddrSpec: Binary.ASCII.Serializable {
     /// - Parameter bytes: The addr-spec as ASCII bytes
     /// - Throws: `Error` if parsing or validation fails
     public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
-    where Bytes.Element == UInt8 {
+    where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
         // Find the @ separator (use last @ to handle quoted local-parts with @)
         var atIndex: Bytes.Index?
         for index in bytes.indices {
-            if bytes[index] == .ascii.commercialAt {
+            if ASCII.Code(bytes[index]) == ASCII.Code.commercialAt {
                 atIndex = index
             }
         }
@@ -176,46 +176,46 @@ extension RFC_2822.AddrSpec {
     /// Validates a local-part per RFC 2822
     ///
     /// local-part = dot-atom / quoted-string
-    private static func validateLocalPart<Bytes: Collection>(
-        _ bytes: Bytes
-    ) throws(Error) where Bytes.Element == UInt8 {
-        guard let firstByte = bytes.first else {
+    private static func validateLocalPart<Codes: Collection>(
+        _ codes: Codes
+    ) throws(Error) where Codes.Element == ASCII.Code {
+        guard let firstCode = codes.first else {
             throw Error.invalidLocalPart("")
         }
 
-        // Get last byte by iteration (avoids Array allocation)
-        var lastByte = firstByte
-        for byte in bytes { lastByte = byte }
+        // Get last code by iteration (avoids Array allocation)
+        var lastCode = firstCode
+        for code in codes { lastCode = code }
 
-        if firstByte == .ascii.quotationMark && lastByte == .ascii.quotationMark {
+        if firstCode == ASCII.Code.quotationMark && lastCode == ASCII.Code.quotationMark {
             // Quoted-string format
-            try validateQuotedString(bytes, for: .localPart)
+            try validateQuotedString(codes, for: .localPart)
         } else {
             // Dot-atom format
-            try validateDotAtom(bytes, for: .localPart)
+            try validateDotAtom(codes, for: .localPart)
         }
     }
 
     /// Validates a domain per RFC 2822
     ///
     /// domain = dot-atom / domain-literal
-    private static func validateDomain<Bytes: Collection>(
-        _ bytes: Bytes
-    ) throws(Error) where Bytes.Element == UInt8 {
-        guard let firstByte = bytes.first else {
+    private static func validateDomain<Codes: Collection>(
+        _ codes: Codes
+    ) throws(Error) where Codes.Element == ASCII.Code {
+        guard let firstCode = codes.first else {
             throw Error.invalidDomain("")
         }
 
-        // Get last byte by iteration (avoids Array allocation)
-        var lastByte = firstByte
-        for byte in bytes { lastByte = byte }
+        // Get last code by iteration (avoids Array allocation)
+        var lastCode = firstCode
+        for code in codes { lastCode = code }
 
-        if firstByte == .ascii.leftSquareBracket && lastByte == .ascii.rightSquareBracket {
+        if firstCode == ASCII.Code.leftSquareBracket && lastCode == ASCII.Code.rightSquareBracket {
             // Domain-literal format
-            try validateDomainLiteral(bytes)
+            try validateDomainLiteral(codes)
         } else {
             // Dot-atom format
-            try validateDotAtom(bytes, for: .domain)
+            try validateDotAtom(codes, for: .domain)
         }
     }
 
@@ -228,38 +228,38 @@ extension RFC_2822.AddrSpec {
     /// Validates a dot-atom
     ///
     /// dot-atom-text = 1*atext *("." 1*atext)
-    private static func validateDotAtom<Bytes: Collection>(
-        _ bytes: Bytes,
+    private static func validateDotAtom<Codes: Collection>(
+        _ codes: Codes,
         for part: Part
-    ) throws(Error) where Bytes.Element == UInt8 {
-        guard let firstByte = bytes.first else {
-            throw errorFor(part, String(decoding: bytes, as: UTF8.self))
+    ) throws(Error) where Codes.Element == ASCII.Code {
+        guard let firstCode = codes.first else {
+            throw errorFor(part, String(decoding: codes, as: UTF8.self))
         }
 
-        // Get last byte
-        var lastByte = firstByte
-        for byte in bytes { lastByte = byte }
+        // Get last code
+        var lastCode = firstCode
+        for code in codes { lastCode = code }
 
         // Cannot start or end with dot
-        guard firstByte != .ascii.period && lastByte != .ascii.period else {
-            throw errorFor(part, String(decoding: bytes, as: UTF8.self))
+        guard firstCode != ASCII.Code.period && lastCode != ASCII.Code.period else {
+            throw errorFor(part, String(decoding: codes, as: UTF8.self))
         }
 
-        // Validate each byte
-        var previousByte: UInt8 = 0
-        for byte in bytes {
+        // Validate each code
+        var previousCode: ASCII.Code = ASCII.Code(0)
+        for code in codes {
             // Check for consecutive dots
-            if byte == .ascii.period && previousByte == .ascii.period {
-                throw errorFor(part, String(decoding: bytes, as: UTF8.self))
+            if code == ASCII.Code.period && previousCode == ASCII.Code.period {
+                throw errorFor(part, String(decoding: codes, as: UTF8.self))
             }
-            previousByte = byte
+            previousCode = code
 
             // Period is allowed as separator
-            if byte == .ascii.period { continue }
+            if code == ASCII.Code.period { continue }
 
             // Must be atext
-            guard RFC_2822.isAtext(byte) else {
-                throw errorFor(part, String(decoding: bytes, as: UTF8.self))
+            guard RFC_2822.isAtext(code) else {
+                throw errorFor(part, String(decoding: codes, as: UTF8.self))
             }
         }
     }
@@ -269,43 +269,43 @@ extension RFC_2822.AddrSpec {
     /// quoted-string = DQUOTE *qcontent DQUOTE
     /// qcontent = qtext / quoted-pair
     /// qtext = NO-WS-CTL / %d33 / %d35-91 / %d93-126
-    private static func validateQuotedString<Bytes: Collection>(
-        _ bytes: Bytes,
+    private static func validateQuotedString<Codes: Collection>(
+        _ codes: Codes,
         for part: Part
-    ) throws(Error) where Bytes.Element == UInt8 {
+    ) throws(Error) where Codes.Element == ASCII.Code {
         var isEscaped = false
         var isFirst = true
-        var byteCount = 0
-        let totalCount = bytes.count
+        var codeCount = 0
+        let totalCount = codes.count
 
-        for byte in bytes {
-            byteCount += 1
+        for code in codes {
+            codeCount += 1
 
             // Skip first and last quotes
             if isFirst {
                 isFirst = false
                 continue
             }
-            if byteCount == totalCount { continue }
+            if codeCount == totalCount { continue }
 
             if isEscaped {
                 isEscaped = false
-            } else if byte == .ascii.reverseSolidus {
+            } else if code == ASCII.Code.reverseSolidus {
                 isEscaped = true
             } else {
                 // qtext validation: NO-WS-CTL / %d33 / %d35-91 / %d93-126
                 let isValidQText =
-                    (byte >= 1 && byte <= 8) || byte == 11 || byte == 12
-                    || (byte >= 14 && byte <= 31) || byte == 33 || (byte >= 35 && byte <= 91)
-                    || (byte >= 93 && byte <= 126)
+                    (code >= 1 && code <= 8) || code == 11 || code == 12
+                    || (code >= 14 && code <= 31) || code == 33 || (code >= 35 && code <= 91)
+                    || (code >= 93 && code <= 126)
                 guard isValidQText else {
-                    throw errorFor(part, String(decoding: bytes, as: UTF8.self))
+                    throw errorFor(part, String(decoding: codes, as: UTF8.self))
                 }
             }
         }
 
         if isEscaped {
-            throw errorFor(part, String(decoding: bytes, as: UTF8.self))
+            throw errorFor(part, String(decoding: codes, as: UTF8.self))
         }
     }
 
@@ -314,50 +314,50 @@ extension RFC_2822.AddrSpec {
     /// domain-literal = "[" *dcontent "]"
     /// dcontent = dtext / quoted-pair
     /// dtext = NO-WS-CTL / %d33-90 / %d94-126
-    private static func validateDomainLiteral<Bytes: Collection>(
-        _ bytes: Bytes
-    ) throws(Error) where Bytes.Element == UInt8 {
+    private static func validateDomainLiteral<Codes: Collection>(
+        _ codes: Codes
+    ) throws(Error) where Codes.Element == ASCII.Code {
         var isEscaped = false
         var isFirst = true
-        var byteCount = 0
-        let totalCount = bytes.count
+        var codeCount = 0
+        let totalCount = codes.count
 
-        for byte in bytes {
-            byteCount += 1
+        for code in codes {
+            codeCount += 1
 
             // Skip first and last brackets
             if isFirst {
                 isFirst = false
                 continue
             }
-            if byteCount == totalCount { continue }
+            if codeCount == totalCount { continue }
 
             if isEscaped {
                 // Only certain characters can follow backslash
                 guard
-                    byte == .ascii.leftSquareBracket
-                        || byte == .ascii.rightSquareBracket
-                        || byte == .ascii.reverseSolidus
+                    code == ASCII.Code.leftSquareBracket
+                        || code == ASCII.Code.rightSquareBracket
+                        || code == ASCII.Code.reverseSolidus
                 else {
-                    throw Error.invalidDomain(String(decoding: bytes, as: UTF8.self))
+                    throw Error.invalidDomain(String(decoding: codes, as: UTF8.self))
                 }
                 isEscaped = false
-            } else if byte == .ascii.reverseSolidus {
+            } else if code == ASCII.Code.reverseSolidus {
                 isEscaped = true
             } else {
                 // dtext validation: NO-WS-CTL / %d33-90 / %d94-126
                 let isValidDText =
-                    (byte >= 1 && byte <= 8) || byte == 11 || byte == 12
-                    || (byte >= 14 && byte <= 31) || (byte >= 33 && byte <= 90)
-                    || (byte >= 94 && byte <= 126)
+                    (code >= 1 && code <= 8) || code == 11 || code == 12
+                    || (code >= 14 && code <= 31) || (code >= 33 && code <= 90)
+                    || (code >= 94 && code <= 126)
                 guard isValidDText else {
-                    throw Error.invalidDomain(String(decoding: bytes, as: UTF8.self))
+                    throw Error.invalidDomain(String(decoding: codes, as: UTF8.self))
                 }
             }
         }
 
         if isEscaped {
-            throw Error.invalidDomain(String(decoding: bytes, as: UTF8.self))
+            throw Error.invalidDomain(String(decoding: codes, as: UTF8.self))
         }
     }
 

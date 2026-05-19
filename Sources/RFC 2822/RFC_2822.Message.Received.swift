@@ -54,20 +54,20 @@ extension RFC_2822.Message.Received: Binary.ASCII.Serializable {
     static public func serialize<Buffer>(
         ascii received: RFC_2822.Message.Received,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == UInt8 {
+    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
 
         // Add name-value pairs
         for (index, token) in received.tokens.enumerated() {
             if index > 0 {
-                buffer.append(.ascii.space)
+                buffer.append(ASCII.Code.space)
             }
-            buffer.append(contentsOf: [UInt8](token))
+            buffer.append(ascii: token)
         }
 
         // Add semicolon and timestamp
-        buffer.append(.ascii.semicolon)
-        buffer.append(.ascii.space)
-        buffer.append(contentsOf: [UInt8](received.timestamp))
+        buffer.append(ASCII.Code.semicolon)
+        buffer.append(ASCII.Code.space)
+        buffer.append(ascii: received.timestamp)
     }
 
     /// Parses a received field from ASCII bytes (AUTHORITATIVE IMPLEMENTATION)
@@ -81,63 +81,65 @@ extension RFC_2822.Message.Received: Binary.ASCII.Serializable {
     /// ## Category Theory
     ///
     /// Parsing transformation:
-    /// - **Domain**: [UInt8] (ASCII bytes)
+    /// - **Domain**: [Byte] (ASCII bytes)
     /// - **Codomain**: RFC_2822.Message.Received (structured data)
     ///
     /// ## Example
     ///
     /// ```swift
-    /// let received = try RFC_2822.Message.Received(ascii: "from mail.example.com; 1234567890".utf8)
+    /// let received = try RFC_2822.Message.Received(ascii: Array<Byte>("from mail.example.com; 1234567890".utf8))
     /// ```
     ///
     /// - Parameter bytes: The received field as ASCII bytes
     /// - Throws: `Error` if parsing fails
     public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
-    where Bytes.Element == UInt8 {
+    where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
-        let byteArray = Array(bytes)
+        // Type-up: lift to ASCII.Code at the entry boundary so the body works
+        // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
+        let codeArray = Array<ASCII.Code>(bytes)
 
         // Find semicolon that separates name-val-list from timestamp
-        guard let semicolonIndex = byteArray.lastIndex(of: .ascii.semicolon) else {
+        guard let semicolonIndex = codeArray.lastIndex(of: ASCII.Code.semicolon) else {
             throw Error.missingSemicolon(String(decoding: bytes, as: UTF8.self))
         }
 
         // Parse timestamp after semicolon
-        let timestampStart = byteArray.index(after: semicolonIndex)
-        guard timestampStart < byteArray.endIndex else {
+        let timestampStart = codeArray.index(after: semicolonIndex)
+        guard timestampStart < codeArray.endIndex else {
             throw Error.missingTimestamp(String(decoding: bytes, as: UTF8.self))
         }
 
-        var timestampBytes = Array(byteArray[timestampStart...])
+        var timestampCodes = Array(codeArray[timestampStart...])
 
         // Strip leading whitespace from timestamp
-        while !timestampBytes.isEmpty
-            && (timestampBytes.first == .ascii.space || timestampBytes.first == .ascii.htab) {
-            timestampBytes.removeFirst()
+        while !timestampCodes.isEmpty
+            && (timestampCodes.first == ASCII.Code.space || timestampCodes.first == ASCII.Code.htab) {
+            timestampCodes.removeFirst()
         }
 
-        guard !timestampBytes.isEmpty else {
+        guard !timestampCodes.isEmpty else {
             throw Error.missingTimestamp(String(decoding: bytes, as: UTF8.self))
         }
 
         let timestamp: RFC_2822.Timestamp
         do {
-            timestamp = try RFC_2822.Timestamp(ascii: timestampBytes)
+            timestamp = try RFC_2822.Timestamp(ascii: Array<Byte>(timestampCodes))
         } catch {
             throw Error.invalidTimestamp(error)
         }
 
         // Parse name-value pairs before semicolon
-        let nameValBytes = Array(byteArray[..<semicolonIndex])
+        let nameValCodes = Array(codeArray[..<semicolonIndex])
         var tokens: [NameValuePair] = []
 
         // Simple parsing: split on whitespace, pair up name-value
         var currentName: String?
-        var currentToken = [UInt8]()
+        var currentToken: [ASCII.Code] = []
 
-        for byte in nameValBytes {
-            if byte == .ascii.space || byte == .ascii.htab {
+        for code in nameValCodes {
+            if code == ASCII.Code.space || code == ASCII.Code.htab {
                 if !currentToken.isEmpty {
                     let tokenString = String(decoding: currentToken, as: UTF8.self)
                     if let name = currentName {
@@ -151,7 +153,7 @@ extension RFC_2822.Message.Received: Binary.ASCII.Serializable {
                     currentToken = []
                 }
             } else {
-                currentToken.append(byte)
+                currentToken.append(code)
             }
         }
 

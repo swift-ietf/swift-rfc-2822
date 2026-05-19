@@ -54,12 +54,12 @@ extension RFC_2822.Message.Received.NameValuePair: Binary.ASCII.Serializable {
     static public func serialize<Buffer>(
         ascii pair: RFC_2822.Message.Received.NameValuePair,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == UInt8 {
+    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
         buffer.reserveCapacity(pair.name.count + 1 + pair.value.count)
 
         buffer.append(contentsOf: pair.name.utf8)
         if !pair.value.isEmpty {
-            buffer.append(.ascii.space)
+            buffer.append(ASCII.Code.space)
             buffer.append(contentsOf: pair.value.utf8)
         }
     }
@@ -75,39 +75,41 @@ extension RFC_2822.Message.Received.NameValuePair: Binary.ASCII.Serializable {
     /// ## Category Theory
     ///
     /// Parsing transformation:
-    /// - **Domain**: [UInt8] (ASCII bytes)
+    /// - **Domain**: [Byte] (ASCII bytes)
     /// - **Codomain**: RFC_2822.Message.Received.NameValuePair (structured data)
     ///
     /// ## Example
     ///
     /// ```swift
-    /// let pair = try RFC_2822.Message.Received.NameValuePair(ascii: "from mail.example.com".utf8)
+    /// let pair = try RFC_2822.Message.Received.NameValuePair(ascii: Array<Byte>("from mail.example.com".utf8))
     /// ```
     ///
     /// - Parameter bytes: The name-value pair as ASCII bytes
     /// - Throws: `Error` if parsing fails
     public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
-    where Bytes.Element == UInt8 {
+    where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
-        var byteArray = Array(bytes)
+        // Type-up: lift to ASCII.Code at the entry boundary so the body works
+        // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
+        var codeArray = Array<ASCII.Code>(bytes)
 
         // Strip leading/trailing whitespace
-        while !byteArray.isEmpty
-            && (byteArray.first == .ascii.space || byteArray.first == .ascii.htab) {
-            byteArray.removeFirst()
+        while !codeArray.isEmpty
+            && (codeArray.first == ASCII.Code.space || codeArray.first == ASCII.Code.htab) {
+            codeArray.removeFirst()
         }
-        while !byteArray.isEmpty
-            && (byteArray.last == .ascii.space || byteArray.last == .ascii.htab) {
-            byteArray.removeLast()
+        while !codeArray.isEmpty
+            && (codeArray.last == ASCII.Code.space || codeArray.last == ASCII.Code.htab) {
+            codeArray.removeLast()
         }
 
-        guard !byteArray.isEmpty else { throw Error.empty }
+        guard !codeArray.isEmpty else { throw Error.empty }
 
         // Find first whitespace that separates name from value
         var nameEndIndex: Int?
-        for (index, byte) in byteArray.enumerated() {
-            if byte == .ascii.space || byte == .ascii.htab {
+        for (index, code) in codeArray.enumerated() {
+            if code == ASCII.Code.space || code == ASCII.Code.htab {
                 nameEndIndex = index
                 break
             }
@@ -117,23 +119,23 @@ extension RFC_2822.Message.Received.NameValuePair: Binary.ASCII.Serializable {
         let value: String
 
         if let endIndex = nameEndIndex {
-            name = String(decoding: byteArray[..<endIndex], as: UTF8.self)
+            name = String(decoding: codeArray[..<endIndex], as: UTF8.self)
 
             // Extract value after whitespace
             var valueStart = endIndex
-            while valueStart < byteArray.count
-                && (byteArray[valueStart] == .ascii.space || byteArray[valueStart] == .ascii.htab) {
+            while valueStart < codeArray.count
+                && (codeArray[valueStart] == ASCII.Code.space || codeArray[valueStart] == ASCII.Code.htab) {
                 valueStart += 1
             }
 
-            if valueStart < byteArray.count {
-                value = String(decoding: byteArray[valueStart...], as: UTF8.self)
+            if valueStart < codeArray.count {
+                value = String(decoding: codeArray[valueStart...], as: UTF8.self)
             } else {
                 value = ""
             }
         } else {
             // No whitespace - entire input is the name
-            name = String(decoding: byteArray, as: UTF8.self)
+            name = String(decoding: codeArray, as: UTF8.self)
             value = ""
         }
 

@@ -150,15 +150,15 @@ extension RFC_2822.Fields: Binary.ASCII.Serializable {
     static public func serialize<Buffer>(
         ascii fields: RFC_2822.Fields,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == UInt8 {
+    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
         // Helper to add a field line
         func addField(_ name: String, _ value: String) {
             buffer.append(contentsOf: name.utf8)
-            buffer.append(.ascii.colon)
-            buffer.append(.ascii.space)
+            buffer.append(ASCII.Code.colon)
+            buffer.append(ASCII.Code.space)
             buffer.append(contentsOf: value.utf8)
-            buffer.append(.ascii.cr)
-            buffer.append(.ascii.lf)
+            buffer.append(ASCII.Code.cr)
+            buffer.append(ASCII.Code.lf)
         }
 
         // Add fields in recommended order per RFC 2822
@@ -276,110 +276,112 @@ extension RFC_2822.Fields: Binary.ASCII.Serializable {
     /// - Parameter bytes: The header fields as ASCII bytes
     /// - Throws: `Error` if parsing fails
     public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
-    where Bytes.Element == UInt8 {
+    where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
-        let byteArray = Array(bytes)
+        // Type-up: lift to ASCII.Code at the entry boundary so the body works
+        // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
+        let codeArray = Array<ASCII.Code>(bytes)
 
-        // Helper: trim whitespace from byte array
-        func trimWhitespace(_ input: [UInt8]) -> [UInt8] {
+        // Helper: trim whitespace from code array
+        func trimWhitespace(_ input: [ASCII.Code]) -> [ASCII.Code] {
             var result = input
-            while !result.isEmpty && (result.first == .ascii.space || result.first == .ascii.htab) {
+            while !result.isEmpty && (result.first == ASCII.Code.space || result.first == ASCII.Code.htab) {
                 result.removeFirst()
             }
-            while !result.isEmpty && (result.last == .ascii.space || result.last == .ascii.htab) {
+            while !result.isEmpty && (result.last == ASCII.Code.space || result.last == ASCII.Code.htab) {
                 result.removeLast()
             }
             return result
         }
 
-        // Helper: check if bytes equal string (case-insensitive)
-        func bytesEqualCaseInsensitive(_ bytes: [UInt8], _ string: String) -> Bool {
-            let stringBytes = Array(string.utf8)
-            guard bytes.count == stringBytes.count else { return false }
-            for i in 0..<bytes.count {
-                let b1 = bytes[i].ascii.lowercased()
-                let b2 = stringBytes[i].ascii.lowercased()
-                guard b1 == b2 else { return false }
+        // Helper: check if codes equal string (case-insensitive)
+        func codesEqualCaseInsensitive(_ codes: [ASCII.Code], _ string: String) -> Bool {
+            let stringCodes = Array<ASCII.Code>(string.utf8)
+            guard codes.count == stringCodes.count else { return false }
+            for i in 0..<codes.count {
+                let c1 = codes[i].lowercased()
+                let c2 = stringCodes[i].lowercased()
+                guard c1 == c2 else { return false }
             }
             return true
         }
 
-        // Helper: split bytes by separator (simple, not considering quotes)
-        func splitBytes(_ bytes: [UInt8], separator: UInt8) -> [[UInt8]] {
-            var result: [[UInt8]] = []
-            var current: [UInt8] = []
-            for byte in bytes {
-                if byte == separator {
+        // Helper: split codes by separator (simple, not considering quotes)
+        func splitCodes(_ codes: [ASCII.Code], separator: ASCII.Code) -> [[ASCII.Code]] {
+            var result: [[ASCII.Code]] = []
+            var current: [ASCII.Code] = []
+            for code in codes {
+                if code == separator {
                     result.append(current)
                     current = []
                 } else {
-                    current.append(byte)
+                    current.append(code)
                 }
             }
             result.append(current)
             return result
         }
 
-        // Parse headers into name-value byte pairs
-        var headers: [(nameBytes: [UInt8], valueBytes: [UInt8])] = []
-        var currentLine: [UInt8] = []
+        // Parse headers into name-value code pairs
+        var headers: [(nameCodes: [ASCII.Code], valueCodes: [ASCII.Code])] = []
+        var currentLine: [ASCII.Code] = []
 
         var i = 0
-        while i < byteArray.count {
-            let byte = byteArray[i]
+        while i < codeArray.count {
+            let code = codeArray[i]
 
-            if byte == UInt8.ascii.cr && i + 1 < byteArray.count && byteArray[i + 1] == .ascii.lf {
+            if code == ASCII.Code.cr && i + 1 < codeArray.count && codeArray[i + 1] == ASCII.Code.lf {
                 // CRLF found
                 i += 2
 
                 // Check if next line is a continuation (starts with space/tab)
-                if i < byteArray.count
-                    && (byteArray[i] == .ascii.space || byteArray[i] == .ascii.htab) {
+                if i < codeArray.count
+                    && (codeArray[i] == ASCII.Code.space || codeArray[i] == ASCII.Code.htab) {
                     // Folded header - continue current line
-                    currentLine.append(.ascii.space)
+                    currentLine.append(ASCII.Code.space)
                     i += 1  // Skip the leading whitespace
                 } else {
                     // End of this header field
                     if !currentLine.isEmpty {
-                        if let colonIdx = currentLine.firstIndex(of: .ascii.colon) {
-                            let nameBytes = trimWhitespace(Array(currentLine[..<colonIdx]))
-                            let valueBytes = trimWhitespace(Array(currentLine[(colonIdx + 1)...]))
-                            headers.append((nameBytes: nameBytes, valueBytes: valueBytes))
+                        if let colonIdx = currentLine.firstIndex(of: ASCII.Code.colon) {
+                            let nameCodes = trimWhitespace(Array(currentLine[..<colonIdx]))
+                            let valueCodes = trimWhitespace(Array(currentLine[(colonIdx + 1)...]))
+                            headers.append((nameCodes: nameCodes, valueCodes: valueCodes))
                         }
                     }
                     currentLine = []
                 }
-            } else if byte == UInt8.ascii.lf {
+            } else if code == ASCII.Code.lf {
                 // LF only (lenient parsing)
                 i += 1
 
-                if i < byteArray.count
-                    && (byteArray[i] == .ascii.space || byteArray[i] == .ascii.htab) {
-                    currentLine.append(.ascii.space)
+                if i < codeArray.count
+                    && (codeArray[i] == ASCII.Code.space || codeArray[i] == ASCII.Code.htab) {
+                    currentLine.append(ASCII.Code.space)
                     i += 1
                 } else {
                     if !currentLine.isEmpty {
-                        if let colonIdx = currentLine.firstIndex(of: .ascii.colon) {
-                            let nameBytes = trimWhitespace(Array(currentLine[..<colonIdx]))
-                            let valueBytes = trimWhitespace(Array(currentLine[(colonIdx + 1)...]))
-                            headers.append((nameBytes: nameBytes, valueBytes: valueBytes))
+                        if let colonIdx = currentLine.firstIndex(of: ASCII.Code.colon) {
+                            let nameCodes = trimWhitespace(Array(currentLine[..<colonIdx]))
+                            let valueCodes = trimWhitespace(Array(currentLine[(colonIdx + 1)...]))
+                            headers.append((nameCodes: nameCodes, valueCodes: valueCodes))
                         }
                     }
                     currentLine = []
                 }
             } else {
-                currentLine.append(byte)
+                currentLine.append(code)
                 i += 1
             }
         }
 
         // Don't forget the last line
         if !currentLine.isEmpty {
-            if let colonIdx = currentLine.firstIndex(of: .ascii.colon) {
-                let nameBytes = trimWhitespace(Array(currentLine[..<colonIdx]))
-                let valueBytes = trimWhitespace(Array(currentLine[(colonIdx + 1)...]))
-                headers.append((nameBytes: nameBytes, valueBytes: valueBytes))
+            if let colonIdx = currentLine.firstIndex(of: ASCII.Code.colon) {
+                let nameCodes = trimWhitespace(Array(currentLine[..<colonIdx]))
+                let valueCodes = trimWhitespace(Array(currentLine[(colonIdx + 1)...]))
+                headers.append((nameCodes: nameCodes, valueCodes: valueCodes))
             }
         }
 
@@ -398,44 +400,45 @@ extension RFC_2822.Fields: Binary.ASCII.Serializable {
         var comments: String?
         var keywords: [String]?
 
-        for (nameBytes, valueBytes) in headers {
-            if bytesEqualCaseInsensitive(nameBytes, "date") {
+        for (nameCodes, valueCodes) in headers {
+            let valueBytes = Array<Byte>(valueCodes)
+            if codesEqualCaseInsensitive(nameCodes, "date") {
                 do {
                     date = try RFC_2822.Timestamp(ascii: valueBytes)
                 } catch {
                     throw Error.invalidFieldFormat(
                         "Date",
-                        String(decoding: valueBytes, as: UTF8.self)
+                        String(decoding: valueCodes, as: UTF8.self)
                     )
                 }
-            } else if bytesEqualCaseInsensitive(nameBytes, "from") {
+            } else if codesEqualCaseInsensitive(nameCodes, "from") {
                 // Parse comma-separated mailboxes
-                let parts = splitBytes(valueBytes, separator: .ascii.comma)
+                let parts = splitCodes(valueCodes, separator: ASCII.Code.comma)
                 for part in parts {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do {
-                            let mailbox = try RFC_2822.Mailbox(ascii: trimmed)
+                            let mailbox = try RFC_2822.Mailbox(ascii: Array<Byte>(trimmed))
                             from.append(mailbox)
                         } catch let error {
                             throw Error.invalidMailbox(error)
                         }
                     }
                 }
-            } else if bytesEqualCaseInsensitive(nameBytes, "sender") {
+            } else if codesEqualCaseInsensitive(nameCodes, "sender") {
                 do {
                     sender = try RFC_2822.Mailbox(ascii: valueBytes)
                 } catch let error {
                     throw Error.invalidMailbox(error)
                 }
-            } else if bytesEqualCaseInsensitive(nameBytes, "reply-to") {
+            } else if codesEqualCaseInsensitive(nameCodes, "reply-to") {
                 var addresses: [RFC_2822.Address] = []
-                let parts = splitBytes(valueBytes, separator: .ascii.comma)
+                let parts = splitCodes(valueCodes, separator: ASCII.Code.comma)
                 for part in parts {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do {
-                            let address = try RFC_2822.Address(ascii: trimmed)
+                            let address = try RFC_2822.Address(ascii: Array<Byte>(trimmed))
                             addresses.append(address)
                         } catch let error {
                             throw Error.invalidAddress(error)
@@ -443,14 +446,14 @@ extension RFC_2822.Fields: Binary.ASCII.Serializable {
                     }
                 }
                 replyTo = addresses.isEmpty ? nil : addresses
-            } else if bytesEqualCaseInsensitive(nameBytes, "to") {
+            } else if codesEqualCaseInsensitive(nameCodes, "to") {
                 var addresses: [RFC_2822.Address] = []
-                let parts = splitBytes(valueBytes, separator: .ascii.comma)
+                let parts = splitCodes(valueCodes, separator: ASCII.Code.comma)
                 for part in parts {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do {
-                            let address = try RFC_2822.Address(ascii: trimmed)
+                            let address = try RFC_2822.Address(ascii: Array<Byte>(trimmed))
                             addresses.append(address)
                         } catch let error {
                             throw Error.invalidAddress(error)
@@ -458,14 +461,14 @@ extension RFC_2822.Fields: Binary.ASCII.Serializable {
                     }
                 }
                 to = addresses.isEmpty ? nil : addresses
-            } else if bytesEqualCaseInsensitive(nameBytes, "cc") {
+            } else if codesEqualCaseInsensitive(nameCodes, "cc") {
                 var addresses: [RFC_2822.Address] = []
-                let parts = splitBytes(valueBytes, separator: .ascii.comma)
+                let parts = splitCodes(valueCodes, separator: ASCII.Code.comma)
                 for part in parts {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do {
-                            let address = try RFC_2822.Address(ascii: trimmed)
+                            let address = try RFC_2822.Address(ascii: Array<Byte>(trimmed))
                             addresses.append(address)
                         } catch let error {
                             throw Error.invalidAddress(error)
@@ -473,14 +476,14 @@ extension RFC_2822.Fields: Binary.ASCII.Serializable {
                     }
                 }
                 cc = addresses.isEmpty ? nil : addresses
-            } else if bytesEqualCaseInsensitive(nameBytes, "bcc") {
+            } else if codesEqualCaseInsensitive(nameCodes, "bcc") {
                 var addresses: [RFC_2822.Address] = []
-                let parts = splitBytes(valueBytes, separator: .ascii.comma)
+                let parts = splitCodes(valueCodes, separator: ASCII.Code.comma)
                 for part in parts {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do {
-                            let address = try RFC_2822.Address(ascii: trimmed)
+                            let address = try RFC_2822.Address(ascii: Array<Byte>(trimmed))
                             addresses.append(address)
                         } catch let error {
                             throw Error.invalidAddress(error)
@@ -488,21 +491,21 @@ extension RFC_2822.Fields: Binary.ASCII.Serializable {
                     }
                 }
                 bcc = addresses.isEmpty ? nil : addresses
-            } else if bytesEqualCaseInsensitive(nameBytes, "message-id") {
+            } else if codesEqualCaseInsensitive(nameCodes, "message-id") {
                 do {
                     messageID = try RFC_2822.Message.ID(ascii: valueBytes)
                 } catch let error {
                     throw Error.invalidMessageID(error)
                 }
-            } else if bytesEqualCaseInsensitive(nameBytes, "in-reply-to") {
+            } else if codesEqualCaseInsensitive(nameCodes, "in-reply-to") {
                 var ids: [RFC_2822.Message.ID] = []
                 // Message IDs are space-separated
-                let parts = splitBytes(valueBytes, separator: .ascii.space)
+                let parts = splitCodes(valueCodes, separator: ASCII.Code.space)
                 for part in parts {
                     let trimmed = trimWhitespace(part)
-                    if !trimmed.isEmpty && trimmed.first == .ascii.lessThanSign {
+                    if !trimmed.isEmpty && trimmed.first == ASCII.Code.lessThanSign {
                         do {
-                            let id = try RFC_2822.Message.ID(ascii: trimmed)
+                            let id = try RFC_2822.Message.ID(ascii: Array<Byte>(trimmed))
                             ids.append(id)
                         } catch let error {
                             throw Error.invalidMessageID(error)
@@ -510,14 +513,14 @@ extension RFC_2822.Fields: Binary.ASCII.Serializable {
                     }
                 }
                 inReplyTo = ids.isEmpty ? nil : ids
-            } else if bytesEqualCaseInsensitive(nameBytes, "references") {
+            } else if codesEqualCaseInsensitive(nameCodes, "references") {
                 var ids: [RFC_2822.Message.ID] = []
-                let parts = splitBytes(valueBytes, separator: .ascii.space)
+                let parts = splitCodes(valueCodes, separator: ASCII.Code.space)
                 for part in parts {
                     let trimmed = trimWhitespace(part)
-                    if !trimmed.isEmpty && trimmed.first == .ascii.lessThanSign {
+                    if !trimmed.isEmpty && trimmed.first == ASCII.Code.lessThanSign {
                         do {
-                            let id = try RFC_2822.Message.ID(ascii: trimmed)
+                            let id = try RFC_2822.Message.ID(ascii: Array<Byte>(trimmed))
                             ids.append(id)
                         } catch let error {
                             throw Error.invalidMessageID(error)
@@ -525,12 +528,12 @@ extension RFC_2822.Fields: Binary.ASCII.Serializable {
                     }
                 }
                 references = ids.isEmpty ? nil : ids
-            } else if bytesEqualCaseInsensitive(nameBytes, "subject") {
-                subject = String(decoding: valueBytes, as: UTF8.self)
-            } else if bytesEqualCaseInsensitive(nameBytes, "comments") {
-                comments = String(decoding: valueBytes, as: UTF8.self)
-            } else if bytesEqualCaseInsensitive(nameBytes, "keywords") {
-                let parts = splitBytes(valueBytes, separator: .ascii.comma)
+            } else if codesEqualCaseInsensitive(nameCodes, "subject") {
+                subject = String(decoding: valueCodes, as: UTF8.self)
+            } else if codesEqualCaseInsensitive(nameCodes, "comments") {
+                comments = String(decoding: valueCodes, as: UTF8.self)
+            } else if codesEqualCaseInsensitive(nameCodes, "keywords") {
+                let parts = splitCodes(valueCodes, separator: ASCII.Code.comma)
                 keywords = parts.map { String(decoding: trimWhitespace($0), as: UTF8.self) }
             }
             // Ignore unknown fields

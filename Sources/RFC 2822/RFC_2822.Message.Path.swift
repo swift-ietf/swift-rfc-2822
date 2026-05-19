@@ -50,12 +50,12 @@ extension RFC_2822.Message.Path: Binary.ASCII.Serializable {
     static public func serialize<Buffer>(
         ascii path: RFC_2822.Message.Path,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == UInt8 {
-        buffer.append(.ascii.lessThanSign)
+    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
+        buffer.append(ASCII.Code.lessThanSign)
         if let addrSpec = path.addrSpec {
-            buffer.append(contentsOf: [UInt8](addrSpec))
+            buffer.append(contentsOf: Array<Byte>(ascii: addrSpec))
         }
-        buffer.append(.ascii.greaterThanSign)
+        buffer.append(ASCII.Code.greaterThanSign)
     }
 
     /// Parses a return path from ASCII bytes (AUTHORITATIVE IMPLEMENTATION)
@@ -69,43 +69,45 @@ extension RFC_2822.Message.Path: Binary.ASCII.Serializable {
     /// ## Category Theory
     ///
     /// Parsing transformation:
-    /// - **Domain**: [UInt8] (ASCII bytes)
+    /// - **Domain**: [Byte] (ASCII bytes)
     /// - **Codomain**: RFC_2822.Message.Path (structured data)
     ///
     /// ## Example
     ///
     /// ```swift
-    /// let path = try RFC_2822.Message.Path(ascii: "<user@example.com>".utf8)
+    /// let path = try RFC_2822.Message.Path(ascii: Array<Byte>("<user@example.com>".utf8))
     /// ```
     ///
     /// - Parameter bytes: The path as ASCII bytes
     /// - Throws: `Error` if parsing fails
     public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
-    where Bytes.Element == UInt8 {
+    where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
-        var byteArray = Array(bytes)
+        // Type-up: lift to ASCII.Code at the entry boundary so the body works
+        // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
+        var codeArray = Array<ASCII.Code>(bytes)
 
         // Strip leading/trailing whitespace (CFWS)
-        while !byteArray.isEmpty
-            && (byteArray.first == .ascii.space || byteArray.first == .ascii.htab) {
-            byteArray.removeFirst()
+        while !codeArray.isEmpty
+            && (codeArray.first == ASCII.Code.space || codeArray.first == ASCII.Code.htab) {
+            codeArray.removeFirst()
         }
-        while !byteArray.isEmpty
-            && (byteArray.last == .ascii.space || byteArray.last == .ascii.htab) {
-            byteArray.removeLast()
+        while !codeArray.isEmpty
+            && (codeArray.last == ASCII.Code.space || codeArray.last == ASCII.Code.htab) {
+            codeArray.removeLast()
         }
 
-        guard !byteArray.isEmpty else { throw Error.empty }
+        guard !codeArray.isEmpty else { throw Error.empty }
 
         // Must be enclosed in angle brackets
-        guard byteArray.first == .ascii.lessThanSign && byteArray.last == .ascii.greaterThanSign
+        guard codeArray.first == ASCII.Code.lessThanSign && codeArray.last == ASCII.Code.greaterThanSign
         else {
             throw Error.missingAngleBrackets(String(decoding: bytes, as: UTF8.self))
         }
 
-        // Extract content between < and >
-        let contentBytes = Array(byteArray[1..<(byteArray.count - 1)])
+        // Extract content between < and > (as Byte for downstream AddrSpec init)
+        let contentBytes = Array<Byte>(codeArray[1..<(codeArray.count - 1)])
 
         // Empty path <> is valid
         if contentBytes.isEmpty {

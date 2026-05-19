@@ -57,7 +57,7 @@ extension RFC_2822.Timestamp: Binary.ASCII.Serializable {
     static public func serialize<Buffer>(
         ascii timestamp: RFC_2822.Timestamp,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == UInt8 {
+    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
         buffer.append(contentsOf: "\(timestamp.secondsSinceEpoch)".utf8)
     }
 
@@ -69,25 +69,28 @@ extension RFC_2822.Timestamp: Binary.ASCII.Serializable {
     /// - Parameter bytes: The timestamp as ASCII bytes
     /// - Throws: `Error` if parsing fails
     public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
-    where Bytes.Element == UInt8 {
+    where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
-        var byteArray = Array(bytes)
+        // Type-up: lift to ASCII.Code at the entry boundary so the body works
+        // against ASCII.Code constants directly (RFC 2822 timestamp grammar is
+        // strict ASCII).
+        var codeArray = Array<ASCII.Code>(bytes)
 
         // Strip leading/trailing whitespace
-        while !byteArray.isEmpty
-            && (byteArray.first == .ascii.space || byteArray.first == .ascii.htab) {
-            byteArray.removeFirst()
+        while !codeArray.isEmpty
+            && (codeArray.first == ASCII.Code.space || codeArray.first == ASCII.Code.htab) {
+            codeArray.removeFirst()
         }
-        while !byteArray.isEmpty
-            && (byteArray.last == .ascii.space || byteArray.last == .ascii.htab) {
-            byteArray.removeLast()
+        while !codeArray.isEmpty
+            && (codeArray.last == ASCII.Code.space || codeArray.last == ASCII.Code.htab) {
+            codeArray.removeLast()
         }
 
-        guard !byteArray.isEmpty else { throw Error.empty }
+        guard !codeArray.isEmpty else { throw Error.empty }
 
         // Parse as numeric value
-        let string = String(decoding: byteArray, as: UTF8.self)
+        let string = String(decoding: codeArray, as: UTF8.self)
         guard let value = Double(string) else {
             throw Error.invalidFormat(string)
         }

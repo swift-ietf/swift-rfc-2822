@@ -67,14 +67,14 @@ extension RFC_2822.Message.ID: Binary.ASCII.Serializable {
     static public func serialize<Buffer>(
         ascii id: RFC_2822.Message.ID,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == UInt8 {
+    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
         buffer.reserveCapacity(id.idLeft.count + id.idRight.count + 3)
 
-        buffer.append(.ascii.lessThanSign)
+        buffer.append(ASCII.Code.lessThanSign)
         buffer.append(contentsOf: id.idLeft.utf8)
-        buffer.append(.ascii.commercialAt)
+        buffer.append(ASCII.Code.commercialAt)
         buffer.append(contentsOf: id.idRight.utf8)
-        buffer.append(.ascii.greaterThanSign)
+        buffer.append(ASCII.Code.greaterThanSign)
     }
 
     /// Parses a message ID from ASCII bytes (AUTHORITATIVE IMPLEMENTATION)
@@ -90,111 +90,113 @@ extension RFC_2822.Message.ID: Binary.ASCII.Serializable {
     /// - Parameter bytes: The message ID as ASCII bytes
     /// - Throws: `Error` if parsing fails
     public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
-    where Bytes.Element == UInt8 {
+    where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
-        var byteArray = Array(bytes)
+        // Type-up: lift to ASCII.Code at the entry boundary so the body works
+        // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
+        var codeArray = Array<ASCII.Code>(bytes)
 
         // Strip leading/trailing whitespace (CFWS)
-        while !byteArray.isEmpty
-            && (byteArray.first == .ascii.space || byteArray.first == .ascii.htab) {
-            byteArray.removeFirst()
+        while !codeArray.isEmpty
+            && (codeArray.first == ASCII.Code.space || codeArray.first == ASCII.Code.htab) {
+            codeArray.removeFirst()
         }
-        while !byteArray.isEmpty
-            && (byteArray.last == .ascii.space || byteArray.last == .ascii.htab) {
-            byteArray.removeLast()
+        while !codeArray.isEmpty
+            && (codeArray.last == ASCII.Code.space || codeArray.last == ASCII.Code.htab) {
+            codeArray.removeLast()
         }
 
-        guard !byteArray.isEmpty else { throw Error.empty }
+        guard !codeArray.isEmpty else { throw Error.empty }
 
         // Must be enclosed in angle brackets
-        guard byteArray.first == .ascii.lessThanSign && byteArray.last == .ascii.greaterThanSign
+        guard codeArray.first == ASCII.Code.lessThanSign && codeArray.last == ASCII.Code.greaterThanSign
         else {
             throw Error.missingAngleBrackets(String(decoding: bytes, as: UTF8.self))
         }
 
         // Extract content between < and >
-        let contentBytes = Array(byteArray[1..<(byteArray.count - 1)])
+        let contentCodes: [ASCII.Code] = Array(codeArray[1..<(codeArray.count - 1)])
 
         // Find @ separator
-        guard let atIndex = contentBytes.firstIndex(of: .ascii.commercialAt) else {
+        guard let atIndex = contentCodes.firstIndex(of: ASCII.Code.commercialAt) else {
             throw Error.missingAtSign(String(decoding: bytes, as: UTF8.self))
         }
 
-        let idLeftBytes = Array(contentBytes[..<atIndex])
-        let idRightBytes = Array(contentBytes[(atIndex + 1)...])
+        let idLeftCodes: [ASCII.Code] = Array(contentCodes[..<atIndex])
+        let idRightCodes: [ASCII.Code] = Array(contentCodes[(atIndex + 1)...])
 
         // ===== VALIDATE ID-LEFT =====
         // id-left = dot-atom-text / no-fold-quote
 
-        guard !idLeftBytes.isEmpty else {
+        guard !idLeftCodes.isEmpty else {
             throw Error.invalidIdLeft("")
         }
 
-        let firstLeftByte = idLeftBytes[0]
-        let lastLeftByte = idLeftBytes[idLeftBytes.count - 1]
+        let firstLeftCode = idLeftCodes[0]
+        let lastLeftCode = idLeftCodes[idLeftCodes.count - 1]
 
-        if firstLeftByte == .ascii.quotationMark && lastLeftByte == .ascii.quotationMark {
+        if firstLeftCode == ASCII.Code.quotationMark && lastLeftCode == ASCII.Code.quotationMark {
             // no-fold-quote: DQUOTE *(qtext / quoted-pair) DQUOTE
             var isEscaped = false
-            for i in 1..<(idLeftBytes.count - 1) {
-                let byte = idLeftBytes[i]
+            for i in 1..<(idLeftCodes.count - 1) {
+                let code = idLeftCodes[i]
                 if isEscaped {
                     isEscaped = false
-                } else if byte == UInt8.ascii.reverseSolidus {
+                } else if code == ASCII.Code.reverseSolidus {
                     isEscaped = true
                 } else {
                     // qtext: printable ASCII except \ and "
                     let isValidQText =
-                        (byte >= 32 && byte <= 126) && byte != .ascii.reverseSolidus
-                        && byte != .ascii.quotationMark
+                        (code >= 32 && code <= 126) && code != ASCII.Code.reverseSolidus
+                        && code != ASCII.Code.quotationMark
                     guard isValidQText else {
-                        throw Error.invalidIdLeft(String(decoding: idLeftBytes, as: UTF8.self))
+                        throw Error.invalidIdLeft(String(decoding: idLeftCodes, as: UTF8.self))
                     }
                 }
             }
             if isEscaped {
-                throw Error.invalidIdLeft(String(decoding: idLeftBytes, as: UTF8.self))
+                throw Error.invalidIdLeft(String(decoding: idLeftCodes, as: UTF8.self))
             }
         } else {
             // dot-atom-text: 1*atext *("." 1*atext)
-            guard firstLeftByte != .ascii.period && lastLeftByte != .ascii.period else {
-                throw Error.invalidIdLeft(String(decoding: idLeftBytes, as: UTF8.self))
+            guard firstLeftCode != ASCII.Code.period && lastLeftCode != ASCII.Code.period else {
+                throw Error.invalidIdLeft(String(decoding: idLeftCodes, as: UTF8.self))
             }
 
-            var previousByte: UInt8 = 0
-            for byte in idLeftBytes {
-                if byte == UInt8.ascii.period && previousByte == .ascii.period {
-                    throw Error.invalidIdLeft(String(decoding: idLeftBytes, as: UTF8.self))
+            var previousCode: ASCII.Code = ASCII.Code(0)
+            for code in idLeftCodes {
+                if code == ASCII.Code.period && previousCode == ASCII.Code.period {
+                    throw Error.invalidIdLeft(String(decoding: idLeftCodes, as: UTF8.self))
                 }
-                previousByte = byte
+                previousCode = code
 
-                if byte == UInt8.ascii.period { continue }
+                if code == ASCII.Code.period { continue }
 
                 // atext per RFC 2822
                 let isAtext =
-                    byte.ascii.isLetter || byte.ascii.isDigit || byte == 0x21  // ! exclamationMark
-                    || byte == UInt8.ascii.numberSign  // #
-                    || byte == UInt8.ascii.dollarSign  // $
-                    || byte == UInt8.ascii.percentSign  // %
-                    || byte == UInt8.ascii.ampersand  // &
-                    || byte == UInt8.ascii.apostrophe  // '
-                    || byte == UInt8.ascii.asterisk  // *
-                    || byte == UInt8.ascii.plusSign  // +
-                    || byte == UInt8.ascii.hyphen  // -
-                    || byte == UInt8.ascii.solidus  // /
-                    || byte == UInt8.ascii.equalsSign  // =
-                    || byte == UInt8.ascii.questionMark  // ?
-                    || byte == UInt8.ascii.circumflexAccent  // ^
-                    || byte == 0x5F  // _ lowLine
-                    || byte == 0x60  // ` graveAccent
-                    || byte == 0x7B  // { leftCurlyBracket
-                    || byte == UInt8.ascii.verticalLine  // |
-                    || byte == 0x7D  // } rightCurlyBracket
-                    || byte == 0x7E  // ~ tilde
+                    code.isLetter || code.isDigit || code == 0x21  // ! exclamationMark
+                    || code == ASCII.Code.numberSign  // #
+                    || code == ASCII.Code.dollarSign  // $
+                    || code == ASCII.Code.percentSign  // %
+                    || code == ASCII.Code.ampersand  // &
+                    || code == ASCII.Code.apostrophe  // '
+                    || code == ASCII.Code.asterisk  // *
+                    || code == ASCII.Code.plusSign  // +
+                    || code == ASCII.Code.hyphen  // -
+                    || code == ASCII.Code.solidus  // /
+                    || code == ASCII.Code.equalsSign  // =
+                    || code == ASCII.Code.questionMark  // ?
+                    || code == ASCII.Code.circumflexAccent  // ^
+                    || code == 0x5F  // _ lowLine
+                    || code == 0x60  // ` graveAccent
+                    || code == 0x7B  // { leftCurlyBracket
+                    || code == ASCII.Code.verticalLine  // |
+                    || code == 0x7D  // } rightCurlyBracket
+                    || code == 0x7E  // ~ tilde
 
                 guard isAtext else {
-                    throw Error.invalidIdLeft(String(decoding: idLeftBytes, as: UTF8.self))
+                    throw Error.invalidIdLeft(String(decoding: idLeftCodes, as: UTF8.self))
                 }
             }
         }
@@ -202,70 +204,70 @@ extension RFC_2822.Message.ID: Binary.ASCII.Serializable {
         // ===== VALIDATE ID-RIGHT =====
         // id-right = dot-atom-text / no-fold-literal
 
-        guard !idRightBytes.isEmpty else {
+        guard !idRightCodes.isEmpty else {
             throw Error.invalidIdRight("")
         }
 
-        let firstRightByte = idRightBytes[0]
-        let lastRightByte = idRightBytes[idRightBytes.count - 1]
+        let firstRightCode = idRightCodes[0]
+        let lastRightCode = idRightCodes[idRightCodes.count - 1]
 
-        if firstRightByte == .ascii.leftSquareBracket && lastRightByte == .ascii.rightSquareBracket {
+        if firstRightCode == ASCII.Code.leftSquareBracket && lastRightCode == ASCII.Code.rightSquareBracket {
             // no-fold-literal: "[" *dtext "]"
-            for i in 1..<(idRightBytes.count - 1) {
-                let byte = idRightBytes[i]
+            for i in 1..<(idRightCodes.count - 1) {
+                let code = idRightCodes[i]
                 // dtext: printable ASCII except [ ] \
-                let isValidDText = (byte >= 33 && byte <= 90) || (byte >= 94 && byte <= 126)
+                let isValidDText = (code >= 33 && code <= 90) || (code >= 94 && code <= 126)
                 guard isValidDText else {
-                    throw Error.invalidIdRight(String(decoding: idRightBytes, as: UTF8.self))
+                    throw Error.invalidIdRight(String(decoding: idRightCodes, as: UTF8.self))
                 }
             }
         } else {
             // dot-atom-text
-            guard firstRightByte != .ascii.period && lastRightByte != .ascii.period else {
-                throw Error.invalidIdRight(String(decoding: idRightBytes, as: UTF8.self))
+            guard firstRightCode != ASCII.Code.period && lastRightCode != ASCII.Code.period else {
+                throw Error.invalidIdRight(String(decoding: idRightCodes, as: UTF8.self))
             }
 
-            var previousByte: UInt8 = 0
-            for byte in idRightBytes {
-                if byte == UInt8.ascii.period && previousByte == .ascii.period {
-                    throw Error.invalidIdRight(String(decoding: idRightBytes, as: UTF8.self))
+            var previousCode: ASCII.Code = ASCII.Code(0)
+            for code in idRightCodes {
+                if code == ASCII.Code.period && previousCode == ASCII.Code.period {
+                    throw Error.invalidIdRight(String(decoding: idRightCodes, as: UTF8.self))
                 }
-                previousByte = byte
+                previousCode = code
 
-                if byte == UInt8.ascii.period { continue }
+                if code == ASCII.Code.period { continue }
 
                 // atext per RFC 2822
                 let isAtext =
-                    byte.ascii.isLetter || byte.ascii.isDigit || byte == 0x21  // ! exclamationMark
-                    || byte == UInt8.ascii.numberSign  // #
-                    || byte == UInt8.ascii.dollarSign  // $
-                    || byte == UInt8.ascii.percentSign  // %
-                    || byte == UInt8.ascii.ampersand  // &
-                    || byte == UInt8.ascii.apostrophe  // '
-                    || byte == UInt8.ascii.asterisk  // *
-                    || byte == UInt8.ascii.plusSign  // +
-                    || byte == UInt8.ascii.hyphen  // -
-                    || byte == UInt8.ascii.solidus  // /
-                    || byte == UInt8.ascii.equalsSign  // =
-                    || byte == UInt8.ascii.questionMark  // ?
-                    || byte == UInt8.ascii.circumflexAccent  // ^
-                    || byte == 0x5F  // _ lowLine
-                    || byte == 0x60  // ` graveAccent
-                    || byte == 0x7B  // { leftCurlyBracket
-                    || byte == UInt8.ascii.verticalLine  // |
-                    || byte == 0x7D  // } rightCurlyBracket
-                    || byte == 0x7E  // ~ tilde
+                    code.isLetter || code.isDigit || code == 0x21  // ! exclamationMark
+                    || code == ASCII.Code.numberSign  // #
+                    || code == ASCII.Code.dollarSign  // $
+                    || code == ASCII.Code.percentSign  // %
+                    || code == ASCII.Code.ampersand  // &
+                    || code == ASCII.Code.apostrophe  // '
+                    || code == ASCII.Code.asterisk  // *
+                    || code == ASCII.Code.plusSign  // +
+                    || code == ASCII.Code.hyphen  // -
+                    || code == ASCII.Code.solidus  // /
+                    || code == ASCII.Code.equalsSign  // =
+                    || code == ASCII.Code.questionMark  // ?
+                    || code == ASCII.Code.circumflexAccent  // ^
+                    || code == 0x5F  // _ lowLine
+                    || code == 0x60  // ` graveAccent
+                    || code == 0x7B  // { leftCurlyBracket
+                    || code == ASCII.Code.verticalLine  // |
+                    || code == 0x7D  // } rightCurlyBracket
+                    || code == 0x7E  // ~ tilde
 
                 guard isAtext else {
-                    throw Error.invalidIdRight(String(decoding: idRightBytes, as: UTF8.self))
+                    throw Error.invalidIdRight(String(decoding: idRightCodes, as: UTF8.self))
                 }
             }
         }
 
         self.init(
             __unchecked: (),
-            idLeft: String(decoding: idLeftBytes, as: UTF8.self),
-            idRight: String(decoding: idRightBytes, as: UTF8.self)
+            idLeft: String(decoding: idLeftCodes, as: UTF8.self),
+            idRight: String(decoding: idRightCodes, as: UTF8.self)
         )
     }
 }

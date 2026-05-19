@@ -85,7 +85,7 @@ extension RFC_2822.Message: Binary.ASCII.Serializable {
     static public func serialize<Buffer>(
         ascii message: RFC_2822.Message,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == UInt8 {
+    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
 
         // Serialize fields
         buffer.append(ascii: message.fields)
@@ -93,10 +93,10 @@ extension RFC_2822.Message: Binary.ASCII.Serializable {
         // Add body if present
         if let body = message.body {
             // CRLF CRLF separator between headers and body
-            buffer.append(.ascii.cr)
-            buffer.append(.ascii.lf)
-            buffer.append(.ascii.cr)
-            buffer.append(.ascii.lf)
+            buffer.append(ASCII.Code.cr)
+            buffer.append(ASCII.Code.lf)
+            buffer.append(ASCII.Code.cr)
+            buffer.append(ASCII.Code.lf)
 
             // Body bytes
             buffer.append(contentsOf: body.bytes)
@@ -116,29 +116,34 @@ extension RFC_2822.Message: Binary.ASCII.Serializable {
     /// - Parameter bytes: The message as ASCII bytes
     /// - Throws: `Error` if parsing fails
     public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
-    where Bytes.Element == UInt8 {
+    where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
-        let byteArray = Array(bytes)
+        // Type-up: lift to ASCII.Code at the entry boundary for grammar parsing,
+        // but keep a [Byte] copy for body/field byte-domain consumption.
+        let byteArray = Array<Byte>(bytes)
+        let codeArray = Array<ASCII.Code>(byteArray)
 
         // Find the blank line (CRLF CRLF) that separates headers from body
         var headerEndIndex: Int?
         var bodyStartIndex: Int?
 
         // Look for CRLF CRLF
-        for i in 0..<(byteArray.count - 3) {
-            if byteArray[i] == .ascii.cr && byteArray[i + 1] == .ascii.lf
-                && byteArray[i + 2] == .ascii.cr && byteArray[i + 3] == .ascii.lf {
-                headerEndIndex = i
-                bodyStartIndex = i + 4
-                break
+        if codeArray.count >= 4 {
+            for i in 0..<(codeArray.count - 3) {
+                if codeArray[i] == ASCII.Code.cr && codeArray[i + 1] == ASCII.Code.lf
+                    && codeArray[i + 2] == ASCII.Code.cr && codeArray[i + 3] == ASCII.Code.lf {
+                    headerEndIndex = i
+                    bodyStartIndex = i + 4
+                    break
+                }
             }
         }
 
         // If not found, try LF LF (lenient)
-        if headerEndIndex == nil {
-            for i in 0..<(byteArray.count - 1) {
-                if byteArray[i] == .ascii.lf && byteArray[i + 1] == .ascii.lf {
+        if headerEndIndex == nil && codeArray.count >= 2 {
+            for i in 0..<(codeArray.count - 1) {
+                if codeArray[i] == ASCII.Code.lf && codeArray[i + 1] == ASCII.Code.lf {
                     headerEndIndex = i
                     bodyStartIndex = i + 2
                     break
@@ -147,8 +152,8 @@ extension RFC_2822.Message: Binary.ASCII.Serializable {
         }
 
         // Parse fields
-        let fieldsBytes: [UInt8]
-        let bodyBytes: [UInt8]?
+        let fieldsBytes: [Byte]
+        let bodyBytes: [Byte]?
 
         if let headerEnd = headerEndIndex, let bodyStart = bodyStartIndex {
             fieldsBytes = Array(byteArray[..<headerEnd])

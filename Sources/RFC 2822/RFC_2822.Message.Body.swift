@@ -19,11 +19,11 @@ extension RFC_2822.Message {
     ///
     /// ## Canonical Storage
     ///
-    /// The body is stored as bytes (`[UInt8]`), which is the most universal
+    /// The body is stored as bytes (`[Byte]`), which is the most universal
     /// representation for email message bodies:
     ///
     /// ```
-    /// Body → [UInt8] (bytes) → String (UTF-8 interpretation)
+    /// Body → [Byte] (bytes) → String (UTF-8 interpretation)
     /// ```
     ///
     /// ## RFC 2822 Notes
@@ -39,10 +39,10 @@ extension RFC_2822.Message {
     /// - Binary content (via MIME transfer encodings)
     public struct Body: Hashable, Sendable {
         /// Canonical byte storage
-        public let bytes: [UInt8]
+        public let bytes: [Byte]
 
         /// Creates a body WITHOUT validation
-        init(__unchecked: Void, bytes: [UInt8]) {
+        init(__unchecked: Void, bytes: [Byte]) {
             self.bytes = bytes
         }
 
@@ -51,7 +51,7 @@ extension RFC_2822.Message {
         /// This is the canonical initializer that directly accepts bytes.
         ///
         /// - Parameter bytes: The message body as bytes
-        public init(_ bytes: [UInt8]) {
+        public init(_ bytes: [Byte]) {
             self.init(__unchecked: (), bytes: bytes)
         }
     }
@@ -63,7 +63,7 @@ extension RFC_2822.Message.Body: Binary.ASCII.Serializable {
     static public func serialize<Buffer>(
         ascii body: RFC_2822.Message.Body,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == UInt8 {
+    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
         buffer.append(contentsOf: body.bytes)
     }
 
@@ -83,7 +83,7 @@ extension RFC_2822.Message.Body: Binary.ASCII.Serializable {
     ///
     /// - Parameter bytes: The body content as bytes
     public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
-    where Bytes.Element == UInt8 {
+    where Bytes.Element == Byte {
         self.init(__unchecked: (), bytes: Array(bytes))
     }
 }
@@ -101,7 +101,7 @@ extension RFC_2822.Message.Body {
     ///
     /// - Parameter string: The message body as string
     public init(_ string: String) {
-        self.init(__unchecked: (), bytes: Array(string.utf8))
+        self.init(__unchecked: (), bytes: Array<Byte>(string.utf8))
     }
 }
 

@@ -71,25 +71,26 @@ extension RFC_2822.Mailbox: Binary.ASCII.Serializable {
     public static func serialize<Buffer: RangeReplaceableCollection>(
         ascii mailbox: Self,
         into buffer: inout Buffer
-    ) where Buffer.Element == UInt8 {
+    ) where Buffer.Element == Byte {
         if let displayName = mailbox.displayName {
             // Check if display name needs quoting
             let needsQuoting = displayName.utf8.contains { byte in
-                !byte.ascii.isLetter && !byte.ascii.isDigit && byte != .ascii.space
+                let code = ASCII.Code(byte)
+                return !code.isLetter && !code.isDigit && code != ASCII.Code.space
             }
 
             if needsQuoting {
-                buffer.append(.ascii.quotationMark)
+                buffer.append(ASCII.Code.quotationMark)
                 buffer.append(contentsOf: displayName.utf8)
-                buffer.append(.ascii.quotationMark)
+                buffer.append(ASCII.Code.quotationMark)
             } else {
                 buffer.append(contentsOf: displayName.utf8)
             }
 
-            buffer.append(.ascii.space)
-            buffer.append(.ascii.lessThanSign)
+            buffer.append(ASCII.Code.space)
+            buffer.append(ASCII.Code.lessThanSign)
             RFC_2822.AddrSpec.serialize(ascii: mailbox.emailAddress, into: &buffer)
-            buffer.append(.ascii.greaterThanSign)
+            buffer.append(ASCII.Code.greaterThanSign)
         } else {
             // Just the addr-spec
             RFC_2822.AddrSpec.serialize(ascii: mailbox.emailAddress, into: &buffer)
@@ -101,7 +102,7 @@ extension RFC_2822.Mailbox: Binary.ASCII.Serializable {
     /// ## Category Theory
     ///
     /// Parsing transformation:
-    /// - **Domain**: [UInt8] (ASCII bytes)
+    /// - **Domain**: [Byte] (ASCII bytes)
     /// - **Codomain**: RFC_2822.Mailbox (structured data)
     ///
     /// ## Format
@@ -113,57 +114,59 @@ extension RFC_2822.Mailbox: Binary.ASCII.Serializable {
     /// ## Example
     ///
     /// ```swift
-    /// let bytes = Array("John Doe <john@example.com>".utf8)
+    /// let bytes = Array<Byte>("John Doe <john@example.com>".utf8)
     /// let mailbox = try RFC_2822.Mailbox(ascii: bytes)
     /// ```
     ///
     /// - Parameter bytes: The mailbox as ASCII bytes
     /// - Throws: `Error` if parsing fails
     public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
-    where Bytes.Element == UInt8 {
+    where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
-        let byteArray = Array(bytes)
+        // Type-up: lift to ASCII.Code at the entry boundary so the body works
+        // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
+        let codeArray = Array<ASCII.Code>(bytes)
 
         // Check if this is a name-addr format (contains angle brackets)
-        if let openIndex = byteArray.lastIndex(of: .ascii.lessThanSign) {
+        if let openIndex = codeArray.lastIndex(of: ASCII.Code.lessThanSign) {
             // name-addr format: "Display Name <addr-spec>"
-            guard let closeIndex = byteArray.lastIndex(of: .ascii.greaterThanSign),
+            guard let closeIndex = codeArray.lastIndex(of: ASCII.Code.greaterThanSign),
                 closeIndex > openIndex
             else {
                 throw Error.missingClosingAngleBracket(String(decoding: bytes, as: UTF8.self))
             }
 
             // Extract display name (everything before <)
-            // Trim whitespace from display name (byte level)
-            var trimmedDisplayNameBytes: [UInt8] = []
-            trimmedDisplayNameBytes.append(contentsOf: byteArray[..<openIndex])
-            while !trimmedDisplayNameBytes.isEmpty
-                && (trimmedDisplayNameBytes.first == .ascii.space
-                    || trimmedDisplayNameBytes.first == .ascii.htab) {
-                trimmedDisplayNameBytes.removeFirst()
+            // Trim whitespace from display name (code level)
+            var trimmedDisplayNameCodes: [ASCII.Code] = []
+            trimmedDisplayNameCodes.append(contentsOf: codeArray[..<openIndex])
+            while !trimmedDisplayNameCodes.isEmpty
+                && (trimmedDisplayNameCodes.first == ASCII.Code.space
+                    || trimmedDisplayNameCodes.first == ASCII.Code.htab) {
+                trimmedDisplayNameCodes.removeFirst()
             }
-            while !trimmedDisplayNameBytes.isEmpty
-                && (trimmedDisplayNameBytes.last == .ascii.space
-                    || trimmedDisplayNameBytes.last == .ascii.htab) {
-                trimmedDisplayNameBytes.removeLast()
+            while !trimmedDisplayNameCodes.isEmpty
+                && (trimmedDisplayNameCodes.last == ASCII.Code.space
+                    || trimmedDisplayNameCodes.last == ASCII.Code.htab) {
+                trimmedDisplayNameCodes.removeLast()
             }
 
-            var displayName = String(decoding: trimmedDisplayNameBytes, as: UTF8.self)
+            var displayName = String(decoding: trimmedDisplayNameCodes, as: UTF8.self)
 
             // Remove quotes if present
-            if !trimmedDisplayNameBytes.isEmpty
-                && trimmedDisplayNameBytes.first == .ascii.quotationMark
-                && trimmedDisplayNameBytes.last == .ascii.quotationMark {
+            if !trimmedDisplayNameCodes.isEmpty
+                && trimmedDisplayNameCodes.first == ASCII.Code.quotationMark
+                && trimmedDisplayNameCodes.last == ASCII.Code.quotationMark {
                 displayName = String(
-                    decoding: trimmedDisplayNameBytes[1..<(trimmedDisplayNameBytes.count - 1)],
+                    decoding: trimmedDisplayNameCodes[1..<(trimmedDisplayNameCodes.count - 1)],
                     as: UTF8.self
                 )
             }
 
-            // Extract addr-spec (between < and >)
-            let addrSpecStart = byteArray.index(after: openIndex)
-            let addrSpecBytes = byteArray[addrSpecStart..<closeIndex]
+            // Extract addr-spec (between < and >) as Byte for downstream init
+            let addrSpecStart = codeArray.index(after: openIndex)
+            let addrSpecBytes = Array<Byte>(codeArray[addrSpecStart..<closeIndex])
 
             let emailAddress: RFC_2822.AddrSpec
             do {
@@ -198,41 +201,3 @@ extension RFC_2822.Mailbox: Binary.ASCII.RawRepresentable {
 }
 
 extension RFC_2822.Mailbox: CustomStringConvertible {}
-
-extension [UInt8] {
-    /// Creates byte representation of RFC 2822 Mailbox
-    ///
-    /// Formats as either "Display Name <addr-spec>" or just "addr-spec".
-    ///
-    /// ## Category Theory
-    ///
-    /// Natural transformation: RFC_2822.Mailbox → [UInt8]
-    ///
-    /// - Parameter mailbox: The mailbox to serialize
-    public init(_ mailbox: RFC_2822.Mailbox) {
-        self = []
-
-        if let displayName = mailbox.displayName {
-            // Check if display name needs quoting
-            let needsQuoting = displayName.contains(where: {
-                !$0.ascii.isLetter && !$0.ascii.isDigit
-            })
-
-            if needsQuoting {
-                self.append(.ascii.quotationMark)
-                self.append(utf8: displayName)
-                self.append(.ascii.quotationMark)
-            } else {
-                self.append(contentsOf: displayName.utf8)
-            }
-
-            self.append(.ascii.space)
-            self.append(.ascii.lessThanSign)
-            self.append(mailbox.emailAddress)
-            self.append(.ascii.greaterThanSign)
-        } else {
-            // Just the addr-spec
-            self.append(mailbox.emailAddress)
-        }
-    }
-}
