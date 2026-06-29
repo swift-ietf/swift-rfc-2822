@@ -15,6 +15,8 @@
 //  `[UInt8]` representation. All String inits are the authoritative
 //  implementation for string serialization.
 
+import Binary_Serializable_Primitives
+
 // MARK: - AddrSpec
 
 extension String {
