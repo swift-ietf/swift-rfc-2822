@@ -63,13 +63,25 @@ extension RFC_2822 {
             guard !localPart.isEmpty else {
                 throw Error.invalidLocalPart("")
             }
-            try Self.validateLocalPart(Array<ASCII.Code>(localPart.utf8))
+            let localCodes: [ASCII.Code]
+            do {
+                localCodes = try Array<ASCII.Code>(localPart.utf8)
+            } catch {
+                throw Error.invalidLocalPart(localPart)
+            }
+            try Self.validateLocalPart(localCodes)
 
             // Validate domain
             guard !domain.isEmpty else {
                 throw Error.invalidDomain("")
             }
-            try Self.validateDomain(Array<ASCII.Code>(domain.utf8))
+            let domainCodes: [ASCII.Code]
+            do {
+                domainCodes = try Array<ASCII.Code>(domain.utf8)
+            } catch {
+                throw Error.invalidDomain(domain)
+            }
+            try Self.validateDomain(domainCodes)
 
             self.init(__unchecked: (), localPart: localPart, domain: domain)
         }
@@ -141,7 +153,7 @@ extension RFC_2822.AddrSpec: Binary.ASCII.Serializable {
         // Find the @ separator (use last @ to handle quoted local-parts with @)
         var atIndex: Bytes.Index?
         for index in bytes.indices {
-            if ASCII.Code(bytes[index]) == ASCII.Code.commercialAt {
+            if (try? ASCII.Code(bytes[index])) == ASCII.Code.commercialAt {
                 atIndex = index
             }
         }

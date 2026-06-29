@@ -281,7 +281,12 @@ extension RFC_2822.Fields: Binary.ASCII.Serializable {
 
         // Type-up: lift to ASCII.Code at the entry boundary so the body works
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
-        let codeArray = Array<ASCII.Code>(bytes)
+        let codeArray: [ASCII.Code]
+        do {
+            codeArray = try Array<ASCII.Code>(bytes)
+        } catch {
+            throw Error.invalidFieldFormat("", String(decoding: bytes, as: UTF8.self))
+        }
 
         // Helper: trim whitespace from code array
         func trimWhitespace(_ input: [ASCII.Code]) -> [ASCII.Code] {
@@ -297,7 +302,7 @@ extension RFC_2822.Fields: Binary.ASCII.Serializable {
 
         // Helper: check if codes equal string (case-insensitive)
         func codesEqualCaseInsensitive(_ codes: [ASCII.Code], _ string: String) -> Bool {
-            let stringCodes = Array<ASCII.Code>(string.utf8)
+            let stringCodes = (try? Array<ASCII.Code>(string.utf8)) ?? []
             guard codes.count == stringCodes.count else { return false }
             for i in 0..<codes.count {
                 let c1 = codes[i].lowercased()

@@ -75,7 +75,12 @@ extension RFC_2822.Timestamp: Binary.ASCII.Serializable {
         // Type-up: lift to ASCII.Code at the entry boundary so the body works
         // against ASCII.Code constants directly (RFC 2822 timestamp grammar is
         // strict ASCII).
-        var codeArray = Array<ASCII.Code>(bytes)
+        var codeArray: [ASCII.Code]
+        do {
+            codeArray = try Array<ASCII.Code>(bytes)
+        } catch {
+            throw Error.invalidFormat(String(decoding: bytes, as: UTF8.self))
+        }
 
         // Strip leading/trailing whitespace
         while !codeArray.isEmpty

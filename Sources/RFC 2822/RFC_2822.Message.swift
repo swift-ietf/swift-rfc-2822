@@ -122,7 +122,7 @@ extension RFC_2822.Message: Binary.ASCII.Serializable {
         // Type-up: lift to ASCII.Code at the entry boundary for grammar parsing,
         // but keep a [Byte] copy for body/field byte-domain consumption.
         let byteArray = Array<Byte>(bytes)
-        let codeArray = Array<ASCII.Code>(byteArray)
+        let codeArray = byteArray.map { (try? ASCII.Code($0)) ?? ASCII.Code(unchecked: 0) }
 
         // Find the blank line (CRLF CRLF) that separates headers from body
         var headerEndIndex: Int?

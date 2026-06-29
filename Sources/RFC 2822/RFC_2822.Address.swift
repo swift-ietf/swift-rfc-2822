@@ -124,7 +124,12 @@ extension RFC_2822.Address: Binary.ASCII.Serializable {
 
         // Type-up: lift to ASCII.Code at the entry boundary so the body works
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
-        let codeArray = Array<ASCII.Code>(bytes)
+        let codeArray: [ASCII.Code]
+        do {
+            codeArray = try Array<ASCII.Code>(bytes)
+        } catch {
+            throw Error.invalidGroup(String(decoding: bytes, as: UTF8.self))
+        }
 
         // Check if this is a group (contains : but not within angle brackets)
         var inAngleBracket = false
