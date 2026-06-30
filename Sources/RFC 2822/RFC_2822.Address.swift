@@ -11,7 +11,9 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import ASCII_Serializer_Primitives
+public import ASCII_Serializer_Primitives
+public import Binary_Serializable_Primitives
+public import Parseable_ASCII_Primitives
 import INCITS_4_1986
 
 extension RFC_2822 {
@@ -56,22 +58,23 @@ extension RFC_2822 {
 
 extension RFC_2822.Address: Hashable {}
 
-// MARK: - Binary.ASCII.Serializable
+// MARK: - ASCII.Serializable / Binary.Serializable ([FAM-012] format siblings)
 
-extension RFC_2822.Address: Binary.ASCII.Serializable {
-    public static func serialize<Buffer>(
-        ascii address: RFC_2822.Address,
+extension RFC_2822.Address: ASCII.Serializable, Binary.Serializable {
+    /// Serializes the address (`mailbox` or `group`) as ASCII text.
+    ///
+    /// [FAM-012] text sibling — composes `Mailbox`'s ASCII verb directly
+    /// (clause-9: ASCII verb → sub-part ASCII verb).
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ address: RFC_2822.Address,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
+    ) where Buffer.Element == ASCII.Code {
         switch address.kind {
         case .mailbox(let mailbox):
-            buffer.append(ascii: mailbox)
-
+            RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
         case .group(let displayName, let mailboxes):
-            // Group format: "Display Name: mailbox1, mailbox2;"
-            buffer.append(contentsOf: displayName.utf8)
+            for byte in displayName.utf8 { buffer.append(ASCII.Code(byte)) }
             buffer.append(ASCII.Code.colon)
-
             for (index, mailbox) in mailboxes.enumerated() {
                 if index > 0 {
                     buffer.append(ASCII.Code.comma)
@@ -79,13 +82,41 @@ extension RFC_2822.Address: Binary.ASCII.Serializable {
                 } else {
                     buffer.append(ASCII.Code.space)
                 }
-                buffer.append(ascii: mailbox)
+                RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
             }
-
             buffer.append(ASCII.Code.semicolon)
         }
     }
 
+    /// Serializes the address (`mailbox` or `group`) as wire bytes.
+    ///
+    /// [FAM-012] binary sibling. Clause-9: composes `Mailbox`'s Byte verb
+    /// directly (Byte verb → sub-part Byte verb) — never a `.serialized` detour.
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ address: RFC_2822.Address,
+        into buffer: inout Buffer
+    ) where Buffer.Element == Byte {
+        switch address.kind {
+        case .mailbox(let mailbox):
+            RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
+        case .group(let displayName, let mailboxes):
+            for byte in displayName.utf8 { buffer.append(Byte(byte)) }
+            buffer.append(ASCII.Code.colon.byte)
+            for (index, mailbox) in mailboxes.enumerated() {
+                if index > 0 {
+                    buffer.append(ASCII.Code.comma.byte)
+                    buffer.append(ASCII.Code.space.byte)
+                } else {
+                    buffer.append(ASCII.Code.space.byte)
+                }
+                RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
+            }
+            buffer.append(ASCII.Code.semicolon.byte)
+        }
+    }
+}
+
+extension RFC_2822.Address {
     /// Errors during address parsing
     public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
         case empty
@@ -106,6 +137,11 @@ extension RFC_2822.Address: Binary.ASCII.Serializable {
             }
         }
     }
+}
+
+// MARK: - ASCII.Parseable ([FAM-012] parse — free-standing init; marker requirement seal-last)
+
+extension RFC_2822.Address: ASCII.Parseable {
 
     /// Parses an address from ASCII bytes (AUTHORITATIVE IMPLEMENTATION)
     ///
@@ -118,7 +154,7 @@ extension RFC_2822.Address: Binary.ASCII.Serializable {
     ///
     /// - Parameter bytes: The address as ASCII bytes
     /// - Throws: `Error` if parsing fails
-    public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
+    public init<Bytes: Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -259,10 +295,32 @@ extension RFC_2822.Address: Binary.ASCII.Serializable {
     }
 }
 
-// MARK: - Protocol Conformances
+// MARK: - RawRepresentable / CustomStringConvertible
 
-extension RFC_2822.Address: Binary.ASCII.RawRepresentable {
-    public typealias RawValue = String
+extension RFC_2822.Address: Swift.RawRepresentable {
+    /// The canonical address string form (`mailbox` or `group`).
+    ///
+    /// Re-provides `Swift.RawRepresentable` directly — the retired
+    /// `Binary.ASCII.RawRepresentable` no longer synthesizes it.
+    public var rawValue: String { description }
+
+    /// Creates an address by parsing `rawValue`, or `nil` if it is malformed.
+    public init?(rawValue: String) {
+        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+    }
 }
 
-extension RFC_2822.Address: CustomStringConvertible {}
+extension RFC_2822.Address: CustomStringConvertible {
+    /// The address in `mailbox` / `display-name: mailbox-list;` form — the same
+    /// grammar the `ASCII.Serializable` / `Binary.Serializable` verbs emit.
+    public var description: String {
+        switch kind {
+        case .mailbox(let mailbox):
+            return mailbox.description
+        case .group(let displayName, let mailboxes):
+            if mailboxes.isEmpty { return "\(displayName):;" }
+            let members = mailboxes.map(\.description).joined(separator: ", ")
+            return "\(displayName): \(members);"
+        }
+    }
+}

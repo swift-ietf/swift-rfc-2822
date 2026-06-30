@@ -11,7 +11,9 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import ASCII_Serializer_Primitives
+public import ASCII_Serializer_Primitives
+public import Binary_Serializable_Primitives
+public import Parseable_ASCII_Primitives
 import INCITS_4_1986
 
 extension RFC_2822.Message {
@@ -87,55 +89,93 @@ extension RFC_2822.Message {
     }
 }
 
-// MARK: - Binary.ASCII.Serializable
+// MARK: - ASCII.Serializable / Binary.Serializable ([FAM-012] format siblings)
 
-extension RFC_2822.Message.ResentBlock: Binary.ASCII.Serializable {
-    static public func serialize<Buffer>(
-        ascii block: RFC_2822.Message.ResentBlock,
+extension RFC_2822.Message.ResentBlock: ASCII.Serializable, Binary.Serializable {
+    /// Serializes the resent block as `Resent-*:` field lines (ASCII text).
+    ///
+    /// [FAM-012] text sibling — composes `Timestamp` / `Mailbox` / `Address` /
+    /// `Message.ID` ASCII verbs directly (clause-9: ASCII verb → sub-part ASCII
+    /// verbs; no `.description` / `.serialized` detour).
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ block: RFC_2822.Message.ResentBlock,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
-
-        // Helper to add a field line
-        func addField(_ name: String, _ value: String) {
-            buffer.append(contentsOf: name.utf8)
+    ) where Buffer.Element == ASCII.Code {
+        func name(_ s: String) {
+            for byte in s.utf8 { buffer.append(ASCII.Code(byte)) }
             buffer.append(ASCII.Code.colon)
             buffer.append(ASCII.Code.space)
-            buffer.append(contentsOf: value.utf8)
+        }
+        func crlf() {
             buffer.append(ASCII.Code.cr)
             buffer.append(ASCII.Code.lf)
         }
-
-        // Resent-Date (required)
-        addField("Resent-Date", "\(block.timestamp.secondsSinceEpoch)")
-
-        // Resent-From (required)
-        addField("Resent-From", block.from.map { String(describing: $0) }.joined(separator: ", "))
-
-        // Resent-Sender (optional)
-        if let sender = block.sender {
-            addField("Resent-Sender", String(describing: sender))
+        func mailboxes(_ list: [RFC_2822.Mailbox]) {
+            for (index, mailbox) in list.enumerated() {
+                if index > 0 { buffer.append(ASCII.Code.comma); buffer.append(ASCII.Code.space) }
+                RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
+            }
+        }
+        func addresses(_ list: [RFC_2822.Address]) {
+            for (index, address) in list.enumerated() {
+                if index > 0 { buffer.append(ASCII.Code.comma); buffer.append(ASCII.Code.space) }
+                RFC_2822.Address.serialize(address, into: &buffer)
+            }
         }
 
-        // Resent-To (optional)
-        if let to = block.to {
-            addField("Resent-To", to.map { String(describing: $0) }.joined(separator: ", "))
-        }
-
-        // Resent-Cc (optional)
-        if let cc = block.cc {
-            addField("Resent-Cc", cc.map { String(describing: $0) }.joined(separator: ", "))
-        }
-
-        // Resent-Bcc (optional)
-        if let bcc = block.bcc {
-            addField("Resent-Bcc", bcc.map { String(describing: $0) }.joined(separator: ", "))
-        }
-
-        // Resent-Message-ID (optional)
-        if let messageID = block.messageID {
-            addField("Resent-Message-ID", messageID.description)
-        }
+        name("Resent-Date"); RFC_2822.Timestamp.serialize(block.timestamp, into: &buffer); crlf()
+        name("Resent-From"); mailboxes(block.from); crlf()
+        if let sender = block.sender { name("Resent-Sender"); RFC_2822.Mailbox.serialize(sender, into: &buffer); crlf() }
+        if let to = block.to { name("Resent-To"); addresses(to); crlf() }
+        if let cc = block.cc { name("Resent-Cc"); addresses(cc); crlf() }
+        if let bcc = block.bcc { name("Resent-Bcc"); addresses(bcc); crlf() }
+        if let messageID = block.messageID { name("Resent-Message-ID"); RFC_2822.Message.ID.serialize(messageID, into: &buffer); crlf() }
     }
+
+    /// Serializes the resent block as `Resent-*:` field lines (wire bytes).
+    ///
+    /// [FAM-012] binary sibling. Clause-9: composes the sub-part Byte verbs
+    /// directly (Byte verb → sub-part Byte verbs) — never a `.description` /
+    /// `.serialized` detour.
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ block: RFC_2822.Message.ResentBlock,
+        into buffer: inout Buffer
+    ) where Buffer.Element == Byte {
+        func name(_ s: String) {
+            for byte in s.utf8 { buffer.append(Byte(byte)) }
+            buffer.append(ASCII.Code.colon.byte)
+            buffer.append(ASCII.Code.space.byte)
+        }
+        func crlf() {
+            buffer.append(ASCII.Code.cr.byte)
+            buffer.append(ASCII.Code.lf.byte)
+        }
+        func mailboxes(_ list: [RFC_2822.Mailbox]) {
+            for (index, mailbox) in list.enumerated() {
+                if index > 0 { buffer.append(ASCII.Code.comma.byte); buffer.append(ASCII.Code.space.byte) }
+                RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
+            }
+        }
+        func addresses(_ list: [RFC_2822.Address]) {
+            for (index, address) in list.enumerated() {
+                if index > 0 { buffer.append(ASCII.Code.comma.byte); buffer.append(ASCII.Code.space.byte) }
+                RFC_2822.Address.serialize(address, into: &buffer)
+            }
+        }
+
+        name("Resent-Date"); RFC_2822.Timestamp.serialize(block.timestamp, into: &buffer); crlf()
+        name("Resent-From"); mailboxes(block.from); crlf()
+        if let sender = block.sender { name("Resent-Sender"); RFC_2822.Mailbox.serialize(sender, into: &buffer); crlf() }
+        if let to = block.to { name("Resent-To"); addresses(to); crlf() }
+        if let cc = block.cc { name("Resent-Cc"); addresses(cc); crlf() }
+        if let bcc = block.bcc { name("Resent-Bcc"); addresses(bcc); crlf() }
+        if let messageID = block.messageID { name("Resent-Message-ID"); RFC_2822.Message.ID.serialize(messageID, into: &buffer); crlf() }
+    }
+}
+
+// MARK: - ASCII.Parseable ([FAM-012] parse — free-standing init; marker requirement seal-last)
+
+extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
 
     /// Parses a resent block from ASCII bytes (AUTHORITATIVE IMPLEMENTATION)
     ///
@@ -151,7 +191,7 @@ extension RFC_2822.Message.ResentBlock: Binary.ASCII.Serializable {
     ///
     /// - Parameter bytes: The resent block as ASCII bytes
     /// - Throws: `Error` if parsing fails
-    public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
+    public init<Bytes: Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -314,10 +354,33 @@ extension RFC_2822.Message.ResentBlock: Binary.ASCII.Serializable {
     }
 }
 
-// MARK: - Protocol Conformances
+// MARK: - RawRepresentable / CustomStringConvertible
 
-extension RFC_2822.Message.ResentBlock: Binary.ASCII.RawRepresentable {
-    public typealias RawValue = String
+extension RFC_2822.Message.ResentBlock: Swift.RawRepresentable {
+    /// The canonical `Resent-*:` field-block string form.
+    ///
+    /// Re-provides `Swift.RawRepresentable` directly — the retired
+    /// `Binary.ASCII.RawRepresentable` no longer synthesizes it.
+    public var rawValue: String { description }
+
+    /// Creates a resent block by parsing `rawValue`, or `nil` if it is malformed.
+    public init?(rawValue: String) {
+        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+    }
 }
 
-extension RFC_2822.Message.ResentBlock: CustomStringConvertible {}
+extension RFC_2822.Message.ResentBlock: CustomStringConvertible {
+    /// The resent block as `Resent-*:` field lines — the same grammar the
+    /// `ASCII.Serializable` / `Binary.Serializable` verbs emit.
+    public var description: String {
+        var lines: [String] = []
+        lines.append("Resent-Date: \(timestamp)")
+        lines.append("Resent-From: \(from.map(\.description).joined(separator: ", "))")
+        if let sender { lines.append("Resent-Sender: \(sender)") }
+        if let to { lines.append("Resent-To: \(to.map(\.description).joined(separator: ", "))") }
+        if let cc { lines.append("Resent-Cc: \(cc.map(\.description).joined(separator: ", "))") }
+        if let bcc { lines.append("Resent-Bcc: \(bcc.map(\.description).joined(separator: ", "))") }
+        if let messageID { lines.append("Resent-Message-ID: \(messageID)") }
+        return lines.map { "\($0)\r\n" }.joined()
+    }
+}

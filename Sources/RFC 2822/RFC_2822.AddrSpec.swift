@@ -11,7 +11,9 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import ASCII_Serializer_Primitives
+public import ASCII_Serializer_Primitives
+public import Binary_Serializable_Primitives
+public import Parseable_ASCII_Primitives
 import INCITS_4_1986
 
 extension RFC_2822 {
@@ -102,26 +104,45 @@ extension RFC_2822.AddrSpec: Hashable {
     }
 }
 
-// MARK: - Binary.ASCII.Serializable
+// MARK: - ASCII.Serializable / Binary.Serializable ([FAM-012] format siblings)
 
-extension RFC_2822.AddrSpec: Binary.ASCII.Serializable {
-
-    public static func serialize<Buffer>(
-        ascii addrSpec: RFC_2822.AddrSpec,
+extension RFC_2822.AddrSpec: ASCII.Serializable, Binary.Serializable {
+    /// Serializes the addr-spec as `local-part@domain` ASCII text.
+    ///
+    /// [FAM-012] text sibling — emits the typed text substrate `ASCII.Code`.
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ addrSpec: RFC_2822.AddrSpec,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
+    ) where Buffer.Element == ASCII.Code {
         buffer.reserveCapacity(
             buffer.count + addrSpec.localPart.utf8.count + 1 + addrSpec.domain.utf8.count)
-
-        // local-part
-        buffer.append(contentsOf: addrSpec.localPart.utf8)
-
-        // @
+        for byte in addrSpec.localPart.utf8 { buffer.append(ASCII.Code(byte)) }
         buffer.append(ASCII.Code.commercialAt)
-
-        // domain
-        buffer.append(contentsOf: addrSpec.domain.utf8)
+        for byte in addrSpec.domain.utf8 { buffer.append(ASCII.Code(byte)) }
     }
+
+    /// Serializes the addr-spec as `local-part@domain` wire bytes.
+    ///
+    /// [FAM-012] binary sibling. Clause-9: an independent body re-emitting the
+    /// grammar directly into the `Byte` domain — NOT a `.serialized`/`.bytes`
+    /// detour through the ASCII verb. Byte-equivalent to the text form (an
+    /// addr-spec is ASCII text); the ASCII==Binary equivalence test guards the
+    /// two bodies against drift.
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ addrSpec: RFC_2822.AddrSpec,
+        into buffer: inout Buffer
+    ) where Buffer.Element == Byte {
+        buffer.reserveCapacity(
+            buffer.count + addrSpec.localPart.utf8.count + 1 + addrSpec.domain.utf8.count)
+        for byte in addrSpec.localPart.utf8 { buffer.append(Byte(byte)) }
+        buffer.append(ASCII.Code.commercialAt.byte)
+        for byte in addrSpec.domain.utf8 { buffer.append(Byte(byte)) }
+    }
+}
+
+// MARK: - ASCII.Parseable ([FAM-012] parse — free-standing init; marker requirement seal-last)
+
+extension RFC_2822.AddrSpec: ASCII.Parseable {
 
     /// Parses an addr-spec from ASCII bytes
     ///
@@ -146,7 +167,7 @@ extension RFC_2822.AddrSpec: Binary.ASCII.Serializable {
     ///
     /// - Parameter bytes: The addr-spec as ASCII bytes
     /// - Throws: `Error` if parsing or validation fails
-    public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
+    public init<Bytes: Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -382,10 +403,25 @@ extension RFC_2822.AddrSpec {
     }
 }
 
-// MARK: - Protocol Conformances
+// MARK: - RawRepresentable / CustomStringConvertible
 
-extension RFC_2822.AddrSpec: Binary.ASCII.RawRepresentable {
-    public typealias RawValue = String
+extension RFC_2822.AddrSpec: Swift.RawRepresentable {
+    /// The canonical `local-part@domain` string form.
+    ///
+    /// Re-provides `Swift.RawRepresentable` directly — the retired
+    /// `Binary.ASCII.RawRepresentable` no longer synthesizes it.
+    public var rawValue: String { description }
+
+    /// Creates an addr-spec by validating `rawValue`, or `nil` if it is malformed.
+    public init?(rawValue: String) {
+        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+    }
 }
 
-extension RFC_2822.AddrSpec: CustomStringConvertible {}
+extension RFC_2822.AddrSpec: CustomStringConvertible {
+    /// The addr-spec in `local-part@domain` form — the same grammar the
+    /// `ASCII.Serializable` / `Binary.Serializable` verbs emit.
+    public var description: String {
+        "\(localPart)@\(domain)"
+    }
+}

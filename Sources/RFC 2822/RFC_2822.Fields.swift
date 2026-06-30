@@ -11,7 +11,9 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import ASCII_Serializer_Primitives
+public import ASCII_Serializer_Primitives
+public import Binary_Serializable_Primitives
+public import Parseable_ASCII_Primitives
 import INCITS_4_1986
 
 extension RFC_2822 {
@@ -144,100 +146,129 @@ extension RFC_2822 {
 
 extension RFC_2822.Fields: Hashable {}
 
-// MARK: - Binary.ASCII.Serializable
+// MARK: - ASCII.Serializable / Binary.Serializable ([FAM-012] format siblings)
 
-extension RFC_2822.Fields: Binary.ASCII.Serializable {
-    static public func serialize<Buffer>(
-        ascii fields: RFC_2822.Fields,
+extension RFC_2822.Fields: ASCII.Serializable, Binary.Serializable {
+    /// Serializes the header fields as a `field-name: value` block (ASCII text).
+    ///
+    /// [FAM-012] text sibling — composes every sub-part's ASCII verb directly
+    /// (clause-9: ASCII verb → sub-part ASCII verbs; no `.description` /
+    /// `.serialized` detour). The resent block composes `ResentBlock`'s own verb.
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ fields: RFC_2822.Fields,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
-        // Helper to add a field line
-        func addField(_ name: String, _ value: String) {
-            buffer.append(contentsOf: name.utf8)
+    ) where Buffer.Element == ASCII.Code {
+        func name(_ s: String) {
+            for byte in s.utf8 { buffer.append(ASCII.Code(byte)) }
             buffer.append(ASCII.Code.colon)
             buffer.append(ASCII.Code.space)
-            buffer.append(contentsOf: value.utf8)
-            buffer.append(ASCII.Code.cr)
-            buffer.append(ASCII.Code.lf)
+        }
+        func string(_ s: String) { for byte in s.utf8 { buffer.append(ASCII.Code(byte)) } }
+        func crlf() { buffer.append(ASCII.Code.cr); buffer.append(ASCII.Code.lf) }
+        func mailboxList(_ list: [RFC_2822.Mailbox]) {
+            for (index, mailbox) in list.enumerated() {
+                if index > 0 { buffer.append(ASCII.Code.comma); buffer.append(ASCII.Code.space) }
+                RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
+            }
+        }
+        func addressList(_ list: [RFC_2822.Address]) {
+            for (index, address) in list.enumerated() {
+                if index > 0 { buffer.append(ASCII.Code.comma); buffer.append(ASCII.Code.space) }
+                RFC_2822.Address.serialize(address, into: &buffer)
+            }
+        }
+        func idList(_ list: [RFC_2822.Message.ID]) {
+            for (index, id) in list.enumerated() {
+                if index > 0 { buffer.append(ASCII.Code.space) }
+                RFC_2822.Message.ID.serialize(id, into: &buffer)
+            }
         }
 
-        // Add fields in recommended order per RFC 2822
-
-        // Trace fields first
         for received in fields.receivedFields {
-            addField("Received", "\(received)")
+            name("Received"); RFC_2822.Message.Received.serialize(received, into: &buffer); crlf()
         }
-
         if let returnPath = fields.returnPath {
-            addField("Return-Path", "\(returnPath)")
+            name("Return-Path"); RFC_2822.Message.Path.serialize(returnPath, into: &buffer); crlf()
         }
-
-        // Resent fields
         for block in fields.resentFields {
-            addField("Resent-Date", "\(block.timestamp.secondsSinceEpoch)")
-            addField(
-                "Resent-From",
-                block.from.map { String(describing: $0) }.joined(separator: ", ")
-            )
-            if let sender = block.sender {
-                addField("Resent-Sender", String(describing: sender))
-            }
-            if let to = block.to {
-                addField("Resent-To", to.map { String(describing: $0) }.joined(separator: ", "))
-            }
-            if let cc = block.cc {
-                addField("Resent-Cc", cc.map { String(describing: $0) }.joined(separator: ", "))
-            }
-            if let messageID = block.messageID {
-                addField("Resent-Message-ID", messageID.description)
-            }
+            RFC_2822.Message.ResentBlock.serialize(block, into: &buffer)
         }
-
-        // Required fields
-        addField("Date", "\(fields.originationDate.secondsSinceEpoch)")
-        addField("From", fields.from.map { String(describing: $0) }.joined(separator: ", "))
-
-        // Optional originator fields
-        if let sender = fields.sender {
-            addField("Sender", String(describing: sender))
-        }
-        if let replyTo = fields.replyTo {
-            addField("Reply-To", replyTo.map { String(describing: $0) }.joined(separator: ", "))
-        }
-
-        // Destination fields
-        if let to = fields.to {
-            addField("To", to.map { String(describing: $0) }.joined(separator: ", "))
-        }
-        if let cc = fields.cc {
-            addField("Cc", cc.map { String(describing: $0) }.joined(separator: ", "))
-        }
-        if let bcc = fields.bcc {
-            addField("Bcc", bcc.map { String(describing: $0) }.joined(separator: ", "))
-        }
-
-        // Identification fields
-        if let messageID = fields.messageID {
-            addField("Message-ID", messageID.description)
-        }
-        if let inReplyTo = fields.inReplyTo {
-            addField("In-Reply-To", inReplyTo.map(\.description).joined(separator: " "))
-        }
-        if let references = fields.references {
-            addField("References", references.map(\.description).joined(separator: " "))
-        }
-
-        // Informational fields
-        if let subject = fields.subject {
-            addField("Subject", subject)
-        }
-        if let comments = fields.comments {
-            addField("Comments", comments)
-        }
-        if let keywords = fields.keywords {
-            addField("Keywords", keywords.joined(separator: ", "))
-        }
+        name("Date"); RFC_2822.Timestamp.serialize(fields.originationDate, into: &buffer); crlf()
+        name("From"); mailboxList(fields.from); crlf()
+        if let sender = fields.sender { name("Sender"); RFC_2822.Mailbox.serialize(sender, into: &buffer); crlf() }
+        if let replyTo = fields.replyTo { name("Reply-To"); addressList(replyTo); crlf() }
+        if let to = fields.to { name("To"); addressList(to); crlf() }
+        if let cc = fields.cc { name("Cc"); addressList(cc); crlf() }
+        if let bcc = fields.bcc { name("Bcc"); addressList(bcc); crlf() }
+        if let messageID = fields.messageID { name("Message-ID"); RFC_2822.Message.ID.serialize(messageID, into: &buffer); crlf() }
+        if let inReplyTo = fields.inReplyTo { name("In-Reply-To"); idList(inReplyTo); crlf() }
+        if let references = fields.references { name("References"); idList(references); crlf() }
+        if let subject = fields.subject { name("Subject"); string(subject); crlf() }
+        if let comments = fields.comments { name("Comments"); string(comments); crlf() }
+        if let keywords = fields.keywords { name("Keywords"); string(keywords.joined(separator: ", ")); crlf() }
     }
+
+    /// Serializes the header fields as a `field-name: value` block (wire bytes).
+    ///
+    /// [FAM-012] binary sibling. Clause-9: composes every sub-part's Byte verb
+    /// directly (Byte verb → sub-part Byte verbs) — never a `.description` /
+    /// `.serialized` detour.
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ fields: RFC_2822.Fields,
+        into buffer: inout Buffer
+    ) where Buffer.Element == Byte {
+        func name(_ s: String) {
+            for byte in s.utf8 { buffer.append(Byte(byte)) }
+            buffer.append(ASCII.Code.colon.byte)
+            buffer.append(ASCII.Code.space.byte)
+        }
+        func string(_ s: String) { for byte in s.utf8 { buffer.append(Byte(byte)) } }
+        func crlf() { buffer.append(ASCII.Code.cr.byte); buffer.append(ASCII.Code.lf.byte) }
+        func mailboxList(_ list: [RFC_2822.Mailbox]) {
+            for (index, mailbox) in list.enumerated() {
+                if index > 0 { buffer.append(ASCII.Code.comma.byte); buffer.append(ASCII.Code.space.byte) }
+                RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
+            }
+        }
+        func addressList(_ list: [RFC_2822.Address]) {
+            for (index, address) in list.enumerated() {
+                if index > 0 { buffer.append(ASCII.Code.comma.byte); buffer.append(ASCII.Code.space.byte) }
+                RFC_2822.Address.serialize(address, into: &buffer)
+            }
+        }
+        func idList(_ list: [RFC_2822.Message.ID]) {
+            for (index, id) in list.enumerated() {
+                if index > 0 { buffer.append(ASCII.Code.space.byte) }
+                RFC_2822.Message.ID.serialize(id, into: &buffer)
+            }
+        }
+
+        for received in fields.receivedFields {
+            name("Received"); RFC_2822.Message.Received.serialize(received, into: &buffer); crlf()
+        }
+        if let returnPath = fields.returnPath {
+            name("Return-Path"); RFC_2822.Message.Path.serialize(returnPath, into: &buffer); crlf()
+        }
+        for block in fields.resentFields {
+            RFC_2822.Message.ResentBlock.serialize(block, into: &buffer)
+        }
+        name("Date"); RFC_2822.Timestamp.serialize(fields.originationDate, into: &buffer); crlf()
+        name("From"); mailboxList(fields.from); crlf()
+        if let sender = fields.sender { name("Sender"); RFC_2822.Mailbox.serialize(sender, into: &buffer); crlf() }
+        if let replyTo = fields.replyTo { name("Reply-To"); addressList(replyTo); crlf() }
+        if let to = fields.to { name("To"); addressList(to); crlf() }
+        if let cc = fields.cc { name("Cc"); addressList(cc); crlf() }
+        if let bcc = fields.bcc { name("Bcc"); addressList(bcc); crlf() }
+        if let messageID = fields.messageID { name("Message-ID"); RFC_2822.Message.ID.serialize(messageID, into: &buffer); crlf() }
+        if let inReplyTo = fields.inReplyTo { name("In-Reply-To"); idList(inReplyTo); crlf() }
+        if let references = fields.references { name("References"); idList(references); crlf() }
+        if let subject = fields.subject { name("Subject"); string(subject); crlf() }
+        if let comments = fields.comments { name("Comments"); string(comments); crlf() }
+        if let keywords = fields.keywords { name("Keywords"); string(keywords.joined(separator: ", ")); crlf() }
+    }
+}
+
+extension RFC_2822.Fields {
 
     /// Errors during fields parsing
     public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
@@ -265,6 +296,11 @@ extension RFC_2822.Fields: Binary.ASCII.Serializable {
             }
         }
     }
+}
+
+// MARK: - ASCII.Parseable ([FAM-012] parse — free-standing init; marker requirement seal-last)
+
+extension RFC_2822.Fields: ASCII.Parseable {
 
     /// Parses fields from ASCII bytes (AUTHORITATIVE IMPLEMENTATION)
     ///
@@ -275,7 +311,7 @@ extension RFC_2822.Fields: Binary.ASCII.Serializable {
     ///
     /// - Parameter bytes: The header fields as ASCII bytes
     /// - Throws: `Error` if parsing fails
-    public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
+    public init<Bytes: Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -574,10 +610,28 @@ extension RFC_2822.Fields: Binary.ASCII.Serializable {
     }
 }
 
-// MARK: - Protocol Conformances
+// MARK: - RawRepresentable / CustomStringConvertible
 
-extension RFC_2822.Fields: Binary.ASCII.RawRepresentable {
-    public typealias RawValue = String
+extension RFC_2822.Fields: Swift.RawRepresentable {
+    /// The canonical header-field-block string form.
+    ///
+    /// Re-provides `Swift.RawRepresentable` directly — the retired
+    /// `Binary.ASCII.RawRepresentable` no longer synthesizes it.
+    public var rawValue: String { description }
+
+    /// Creates fields by parsing `rawValue`, or `nil` if they are malformed.
+    public init?(rawValue: String) {
+        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+    }
 }
 
-extension RFC_2822.Fields: CustomStringConvertible {}
+extension RFC_2822.Fields: CustomStringConvertible {
+    /// The header fields as a `field-name: value` block — derived from the
+    /// `Binary.Serializable` verb (the retired `Binary.ASCII` tier formerly
+    /// synthesized this from the serialized form).
+    public var description: String {
+        var out: [Byte] = []
+        RFC_2822.Fields.serialize(self, into: &out)
+        return String(decoding: out, as: UTF8.self)
+    }
+}

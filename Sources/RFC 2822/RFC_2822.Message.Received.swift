@@ -11,7 +11,9 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import ASCII_Serializer_Primitives
+public import ASCII_Serializer_Primitives
+public import Binary_Serializable_Primitives
+public import Parseable_ASCII_Primitives
 import INCITS_4_1986
 
 extension RFC_2822.Message {
@@ -48,27 +50,48 @@ extension RFC_2822.Message {
 
 // Note: NameValuePair is defined in RFC_2822.Message.Received.NameValuePair.swift
 
-// MARK: - Binary.ASCII.Serializable
+// MARK: - ASCII.Serializable / Binary.Serializable ([FAM-012] format siblings)
 
-extension RFC_2822.Message.Received: Binary.ASCII.Serializable {
-    static public func serialize<Buffer>(
-        ascii received: RFC_2822.Message.Received,
+extension RFC_2822.Message.Received: ASCII.Serializable, Binary.Serializable {
+    /// Serializes the received field as `name-val-list; timestamp` ASCII text.
+    ///
+    /// [FAM-012] text sibling — composes `NameValuePair` + `Timestamp` ASCII
+    /// verbs directly (clause-9: ASCII verb → sub-part ASCII verbs).
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ received: RFC_2822.Message.Received,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
-
-        // Add name-value pairs
+    ) where Buffer.Element == ASCII.Code {
         for (index, token) in received.tokens.enumerated() {
-            if index > 0 {
-                buffer.append(ASCII.Code.space)
-            }
-            buffer.append(ascii: token)
+            if index > 0 { buffer.append(ASCII.Code.space) }
+            NameValuePair.serialize(token, into: &buffer)
         }
-
-        // Add semicolon and timestamp
         buffer.append(ASCII.Code.semicolon)
         buffer.append(ASCII.Code.space)
-        buffer.append(ascii: received.timestamp)
+        RFC_2822.Timestamp.serialize(received.timestamp, into: &buffer)
     }
+
+    /// Serializes the received field as `name-val-list; timestamp` wire bytes.
+    ///
+    /// [FAM-012] binary sibling. Clause-9: composes `NameValuePair` + `Timestamp`
+    /// Byte verbs directly (Byte verb → sub-part Byte verbs) — never a
+    /// `.serialized` detour.
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ received: RFC_2822.Message.Received,
+        into buffer: inout Buffer
+    ) where Buffer.Element == Byte {
+        for (index, token) in received.tokens.enumerated() {
+            if index > 0 { buffer.append(ASCII.Code.space.byte) }
+            NameValuePair.serialize(token, into: &buffer)
+        }
+        buffer.append(ASCII.Code.semicolon.byte)
+        buffer.append(ASCII.Code.space.byte)
+        RFC_2822.Timestamp.serialize(received.timestamp, into: &buffer)
+    }
+}
+
+// MARK: - ASCII.Parseable ([FAM-012] parse — free-standing init; marker requirement seal-last)
+
+extension RFC_2822.Message.Received: ASCII.Parseable {
 
     /// Parses a received field from ASCII bytes (AUTHORITATIVE IMPLEMENTATION)
     ///
@@ -92,7 +115,7 @@ extension RFC_2822.Message.Received: Binary.ASCII.Serializable {
     ///
     /// - Parameter bytes: The received field as ASCII bytes
     /// - Throws: `Error` if parsing fails
-    public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
+    public init<Bytes: Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -177,10 +200,26 @@ extension RFC_2822.Message.Received: Binary.ASCII.Serializable {
     }
 }
 
-// MARK: - Protocol Conformances
+// MARK: - RawRepresentable / CustomStringConvertible
 
-extension RFC_2822.Message.Received: Binary.ASCII.RawRepresentable {
-    public typealias RawValue = String
+extension RFC_2822.Message.Received: Swift.RawRepresentable {
+    /// The canonical `name-val-list; timestamp` string form.
+    ///
+    /// Re-provides `Swift.RawRepresentable` directly — the retired
+    /// `Binary.ASCII.RawRepresentable` no longer synthesizes it.
+    public var rawValue: String { description }
+
+    /// Creates a received field by parsing `rawValue`, or `nil` if it is malformed.
+    public init?(rawValue: String) {
+        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+    }
 }
 
-extension RFC_2822.Message.Received: CustomStringConvertible {}
+extension RFC_2822.Message.Received: CustomStringConvertible {
+    /// The received field in `name-val-list; timestamp` form — the same grammar
+    /// the `ASCII.Serializable` / `Binary.Serializable` verbs emit.
+    public var description: String {
+        let pairs = tokens.map(\.description).joined(separator: " ")
+        return "\(pairs); \(timestamp)"
+    }
+}

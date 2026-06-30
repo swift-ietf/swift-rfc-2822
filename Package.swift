@@ -25,6 +25,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/swift-primitives/swift-binary-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-ascii-serializer-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-ascii-parser-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-incits/swift-incits-4-1986.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-parser-primitives.git", branch: "main")
     ],
@@ -34,6 +35,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Binary Primitives", package: "swift-binary-primitives"),
                 .product(name: "ASCII Serializer Primitives", package: "swift-ascii-serializer-primitives"),
+                .product(name: "Parseable ASCII Primitives", package: "swift-ascii-parser-primitives"),
                 .product(name: "INCITS 4 1986", package: "swift-incits-4-1986"),
                 .product(name: "Parser Primitives", package: "swift-parser-primitives")
             ]

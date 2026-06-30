@@ -11,7 +11,9 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import ASCII_Serializer_Primitives
+public import ASCII_Serializer_Primitives
+public import Binary_Serializable_Primitives
+public import Parseable_ASCII_Primitives
 import INCITS_4_1986
 
 extension RFC_2822.Message {
@@ -61,21 +63,47 @@ extension RFC_2822.Message.ID: Hashable {
     }
 }
 
-// MARK: - Binary.ASCII.Serializable
+// MARK: - ASCII.Serializable / Binary.Serializable ([FAM-012] format siblings)
 
-extension RFC_2822.Message.ID: Binary.ASCII.Serializable {
-    static public func serialize<Buffer>(
-        ascii id: RFC_2822.Message.ID,
+extension RFC_2822.Message.ID: ASCII.Serializable, Binary.Serializable {
+    /// Serializes the message ID as `<id-left@id-right>` ASCII text.
+    ///
+    /// [FAM-012] text sibling — emits the typed text substrate `ASCII.Code`.
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ id: RFC_2822.Message.ID,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
+    ) where Buffer.Element == ASCII.Code {
         buffer.reserveCapacity(id.idLeft.count + id.idRight.count + 3)
-
         buffer.append(ASCII.Code.lessThanSign)
-        buffer.append(contentsOf: id.idLeft.utf8)
+        for byte in id.idLeft.utf8 { buffer.append(ASCII.Code(byte)) }
         buffer.append(ASCII.Code.commercialAt)
-        buffer.append(contentsOf: id.idRight.utf8)
+        for byte in id.idRight.utf8 { buffer.append(ASCII.Code(byte)) }
         buffer.append(ASCII.Code.greaterThanSign)
     }
+
+    /// Serializes the message ID as `<id-left@id-right>` wire bytes.
+    ///
+    /// [FAM-012] binary sibling. Clause-9: an independent body re-emitting the
+    /// grammar directly into the `Byte` domain — NOT a `.serialized`/`.bytes`
+    /// byte-detour through the ASCII verb. Byte-equivalent to the text form
+    /// (a message-id is ASCII text); the ASCII==Binary equivalence test guards
+    /// the two bodies against drift.
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ id: RFC_2822.Message.ID,
+        into buffer: inout Buffer
+    ) where Buffer.Element == Byte {
+        buffer.reserveCapacity(id.idLeft.count + id.idRight.count + 3)
+        buffer.append(ASCII.Code.lessThanSign.byte)
+        for byte in id.idLeft.utf8 { buffer.append(Byte(byte)) }
+        buffer.append(ASCII.Code.commercialAt.byte)
+        for byte in id.idRight.utf8 { buffer.append(Byte(byte)) }
+        buffer.append(ASCII.Code.greaterThanSign.byte)
+    }
+}
+
+// MARK: - ASCII.Parseable ([FAM-012] parse — free-standing init; marker requirement seal-last)
+
+extension RFC_2822.Message.ID: ASCII.Parseable {
 
     /// Parses a message ID from ASCII bytes (AUTHORITATIVE IMPLEMENTATION)
     ///
@@ -89,7 +117,7 @@ extension RFC_2822.Message.ID: Binary.ASCII.Serializable {
     ///
     /// - Parameter bytes: The message ID as ASCII bytes
     /// - Throws: `Error` if parsing fails
-    public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
+    public init<Bytes: Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -277,10 +305,25 @@ extension RFC_2822.Message.ID: Binary.ASCII.Serializable {
     }
 }
 
-// MARK: - Protocol Conformances
+// MARK: - RawRepresentable / CustomStringConvertible
 
-extension RFC_2822.Message.ID: Binary.ASCII.RawRepresentable {
-    public typealias RawValue = String
+extension RFC_2822.Message.ID: Swift.RawRepresentable {
+    /// The canonical `<id-left@id-right>` string form.
+    ///
+    /// Re-provides `Swift.RawRepresentable` directly — the retired
+    /// `Binary.ASCII.RawRepresentable` no longer synthesizes it.
+    public var rawValue: String { description }
+
+    /// Creates a message ID by validating `rawValue`, or `nil` if it is malformed.
+    public init?(rawValue: String) {
+        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+    }
 }
 
-extension RFC_2822.Message.ID: CustomStringConvertible {}
+extension RFC_2822.Message.ID: CustomStringConvertible {
+    /// The message ID in `<id-left@id-right>` form — the same grammar the
+    /// `ASCII.Serializable` / `Binary.Serializable` verbs emit.
+    public var description: String {
+        "<\(idLeft)@\(idRight)>"
+    }
+}

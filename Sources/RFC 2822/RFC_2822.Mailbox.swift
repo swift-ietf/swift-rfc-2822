@@ -11,7 +11,9 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import ASCII_Serializer_Primitives
+public import ASCII_Serializer_Primitives
+public import Binary_Serializable_Primitives
+public import Parseable_ASCII_Primitives
 import INCITS_4_1986
 
 extension RFC_2822 {
@@ -62,40 +64,74 @@ extension RFC_2822 {
     }
 }
 
-// MARK: - Binary.ASCII.Serializable
+// MARK: - ASCII.Serializable / Binary.Serializable ([FAM-012] format siblings)
 
-extension RFC_2822.Mailbox: Binary.ASCII.Serializable {
-    /// Serialize to canonical ASCII byte representation
+extension RFC_2822.Mailbox: ASCII.Serializable, Binary.Serializable {
+    /// Serializes the mailbox as `Display Name <addr-spec>` (or bare `addr-spec`)
+    /// ASCII text.
     ///
-    /// Formats as either "Display Name <addr-spec>" or just "addr-spec".
+    /// [FAM-012] text sibling — emits `ASCII.Code` and composes `AddrSpec`'s
+    /// ASCII verb directly (clause-9: ASCII verb → sub-part ASCII verb).
     public static func serialize<Buffer: RangeReplaceableCollection>(
-        ascii mailbox: Self,
+        _ mailbox: Self,
         into buffer: inout Buffer
-    ) where Buffer.Element == Byte {
+    ) where Buffer.Element == ASCII.Code {
         if let displayName = mailbox.displayName {
-            // Check if display name needs quoting
             let needsQuoting = displayName.utf8.contains { byte in
                 let code = ASCII.Code(byte)
                 return !code.isLetter && !code.isDigit && code != ASCII.Code.space
             }
-
             if needsQuoting {
                 buffer.append(ASCII.Code.quotationMark)
-                buffer.append(contentsOf: displayName.utf8)
+                for byte in displayName.utf8 { buffer.append(ASCII.Code(byte)) }
                 buffer.append(ASCII.Code.quotationMark)
             } else {
-                buffer.append(contentsOf: displayName.utf8)
+                for byte in displayName.utf8 { buffer.append(ASCII.Code(byte)) }
             }
-
             buffer.append(ASCII.Code.space)
             buffer.append(ASCII.Code.lessThanSign)
-            RFC_2822.AddrSpec.serialize(ascii: mailbox.emailAddress, into: &buffer)
+            RFC_2822.AddrSpec.serialize(mailbox.emailAddress, into: &buffer)
             buffer.append(ASCII.Code.greaterThanSign)
         } else {
-            // Just the addr-spec
-            RFC_2822.AddrSpec.serialize(ascii: mailbox.emailAddress, into: &buffer)
+            RFC_2822.AddrSpec.serialize(mailbox.emailAddress, into: &buffer)
         }
     }
+
+    /// Serializes the mailbox as `Display Name <addr-spec>` (or bare `addr-spec`)
+    /// wire bytes.
+    ///
+    /// [FAM-012] binary sibling. Clause-9: an independent body composing
+    /// `AddrSpec`'s Byte verb directly (Byte verb → sub-part Byte verb) — never
+    /// a `.serialized` detour. Byte-equivalent to the text form.
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ mailbox: Self,
+        into buffer: inout Buffer
+    ) where Buffer.Element == Byte {
+        if let displayName = mailbox.displayName {
+            let needsQuoting = displayName.utf8.contains { byte in
+                let code = ASCII.Code(byte)
+                return !code.isLetter && !code.isDigit && code != ASCII.Code.space
+            }
+            if needsQuoting {
+                buffer.append(ASCII.Code.quotationMark.byte)
+                for byte in displayName.utf8 { buffer.append(Byte(byte)) }
+                buffer.append(ASCII.Code.quotationMark.byte)
+            } else {
+                for byte in displayName.utf8 { buffer.append(Byte(byte)) }
+            }
+            buffer.append(ASCII.Code.space.byte)
+            buffer.append(ASCII.Code.lessThanSign.byte)
+            RFC_2822.AddrSpec.serialize(mailbox.emailAddress, into: &buffer)
+            buffer.append(ASCII.Code.greaterThanSign.byte)
+        } else {
+            RFC_2822.AddrSpec.serialize(mailbox.emailAddress, into: &buffer)
+        }
+    }
+}
+
+// MARK: - ASCII.Parseable ([FAM-012] parse — free-standing init; marker requirement seal-last)
+
+extension RFC_2822.Mailbox: ASCII.Parseable {
 
     /// Parses a mailbox from ASCII bytes
     ///
@@ -120,7 +156,7 @@ extension RFC_2822.Mailbox: Binary.ASCII.Serializable {
     ///
     /// - Parameter bytes: The mailbox as ASCII bytes
     /// - Throws: `Error` if parsing fails
-    public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
+    public init<Bytes: Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -199,10 +235,32 @@ extension RFC_2822.Mailbox: Binary.ASCII.Serializable {
     }
 }
 
-// MARK: - Protocol Conformances
+// MARK: - RawRepresentable / CustomStringConvertible
 
-extension RFC_2822.Mailbox: Binary.ASCII.RawRepresentable {
-    public typealias RawValue = String
+extension RFC_2822.Mailbox: Swift.RawRepresentable {
+    /// The canonical `Display Name <addr-spec>` / `addr-spec` string form.
+    ///
+    /// Re-provides `Swift.RawRepresentable` directly — the retired
+    /// `Binary.ASCII.RawRepresentable` no longer synthesizes it.
+    public var rawValue: String { description }
+
+    /// Creates a mailbox by parsing `rawValue`, or `nil` if it is malformed.
+    public init?(rawValue: String) {
+        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+    }
 }
 
-extension RFC_2822.Mailbox: CustomStringConvertible {}
+extension RFC_2822.Mailbox: CustomStringConvertible {
+    /// The mailbox in `Display Name <addr-spec>` (or bare `addr-spec`) form —
+    /// the same grammar the `ASCII.Serializable` / `Binary.Serializable` verbs
+    /// emit.
+    public var description: String {
+        guard let displayName else { return emailAddress.description }
+        let needsQuoting = displayName.utf8.contains { byte in
+            let code = ASCII.Code(byte)
+            return !code.isLetter && !code.isDigit && code != ASCII.Code.space
+        }
+        let name = needsQuoting ? "\"\(displayName)\"" : displayName
+        return "\(name) <\(emailAddress)>"
+    }
+}

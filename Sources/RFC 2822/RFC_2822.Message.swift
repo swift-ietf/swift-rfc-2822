@@ -11,7 +11,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import ASCII_Serializer_Primitives
+public import Binary_Serializable_Primitives
 import INCITS_4_1986
 
 extension RFC_2822 {
@@ -26,7 +26,7 @@ extension RFC_2822 {
     /// ## Example
     ///
     /// ```swift
-    /// let message = try RFC_2822.Message(ascii: rawMessageBytes)
+    /// let message = try RFC_2822.Message(binary: rawMessageBytes)
     /// print(message.fields.subject)
     /// print(message.body)
     /// ```
@@ -63,10 +63,9 @@ extension RFC_2822.Message {
     }
 }
 
-// MARK: - Binary.ASCII.Serializable
+// MARK: - Errors
 
-extension RFC_2822.Message: Binary.ASCII.Serializable {
-
+extension RFC_2822.Message {
     /// Errors during message parsing
     public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
         case empty
@@ -81,27 +80,35 @@ extension RFC_2822.Message: Binary.ASCII.Serializable {
             }
         }
     }
+}
 
-    static public func serialize<Buffer>(
-        ascii message: RFC_2822.Message,
+// MARK: - Binary.Serializable ([FAM-012] — Message is byte-domain, Binary-only)
+
+extension RFC_2822.Message: Binary.Serializable {
+    /// Serializes the whole message (`fields CRLF CRLF body`) as wire bytes.
+    ///
+    /// [FAM-012] Message is byte-domain (the body may be binary / MIME-encoded),
+    /// so it conforms to `Binary.Serializable` ONLY. Clause-9: composes `Fields`'
+    /// Byte verb + `Body`'s Byte verb directly — never a `.serialized` detour.
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ message: RFC_2822.Message,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
-
-        // Serialize fields
-        buffer.append(ascii: message.fields)
-
-        // Add body if present
+    ) where Buffer.Element == Byte {
+        RFC_2822.Fields.serialize(message.fields, into: &buffer)
         if let body = message.body {
             // CRLF CRLF separator between headers and body
-            buffer.append(ASCII.Code.cr)
-            buffer.append(ASCII.Code.lf)
-            buffer.append(ASCII.Code.cr)
-            buffer.append(ASCII.Code.lf)
-
-            // Body bytes
-            buffer.append(contentsOf: body.bytes)
+            buffer.append(ASCII.Code.cr.byte)
+            buffer.append(ASCII.Code.lf.byte)
+            buffer.append(ASCII.Code.cr.byte)
+            buffer.append(ASCII.Code.lf.byte)
+            RFC_2822.Message.Body.serialize(body, into: &buffer)
         }
     }
+}
+
+// MARK: - Byte-domain parse ([FAM-012] free-standing init; Binary.Parseable marker seal-last)
+
+extension RFC_2822.Message {
 
     /// Parses a message from ASCII bytes (AUTHORITATIVE IMPLEMENTATION)
     ///
@@ -115,7 +122,7 @@ extension RFC_2822.Message: Binary.ASCII.Serializable {
     ///
     /// - Parameter bytes: The message as ASCII bytes
     /// - Throws: `Error` if parsing fails
-    public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
+    public init<Bytes: Collection>(binary bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -183,12 +190,28 @@ extension RFC_2822.Message: Binary.ASCII.Serializable {
     }
 }
 
-// MARK: - Protocol Conformances
+// MARK: - RawRepresentable / CustomStringConvertible
 
-extension RFC_2822.Message: Binary.ASCII.RawRepresentable {
-    public typealias RawValue = String
+extension RFC_2822.Message: Swift.RawRepresentable {
+    /// The whole message decoded as a UTF-8 string (lossy for binary bodies).
+    ///
+    /// Re-provides `Swift.RawRepresentable` directly — the retired
+    /// `Binary.ASCII.RawRepresentable` no longer synthesizes it.
+    public var rawValue: String { description }
+
+    /// Creates a message by parsing `rawValue`'s UTF-8 bytes, or `nil` if malformed.
+    public init?(rawValue: String) {
+        try? self.init(binary: rawValue.utf8.map { Byte($0) })
+    }
 }
 
-// MARK: - CustomStringConvertible
-
-extension RFC_2822.Message: CustomStringConvertible {}
+extension RFC_2822.Message: CustomStringConvertible {
+    /// The whole message as `fields CRLF CRLF body` text — derived from the
+    /// `Binary.Serializable` verb (the retired `Binary.ASCII` tier formerly
+    /// synthesized this from the serialized form).
+    public var description: String {
+        var out: [Byte] = []
+        RFC_2822.Message.serialize(self, into: &out)
+        return String(decoding: out, as: UTF8.self)
+    }
+}

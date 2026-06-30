@@ -11,8 +11,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import ASCII_Serializer_Primitives
-import INCITS_4_1986
+public import Binary_Serializable_Primitives
 
 extension RFC_2822.Message {
     /// RFC 2822 message body
@@ -57,17 +56,24 @@ extension RFC_2822.Message {
     }
 }
 
-// MARK: - Binary.ASCII.Serializable
+// MARK: - Binary.Serializable ([FAM-012] — Body is byte-domain, Binary-only)
 
-extension RFC_2822.Message.Body: Binary.ASCII.Serializable {
-    static public func serialize<Buffer>(
-        ascii body: RFC_2822.Message.Body,
+extension RFC_2822.Message.Body: Binary.Serializable {
+    /// Serializes the body as its raw wire bytes.
+    ///
+    /// [FAM-012] Body is byte-domain — it may carry binary / MIME-encoded
+    /// content — so it conforms to `Binary.Serializable` ONLY. There is no
+    /// `ASCII.Serializable` sibling: arbitrary bytes have no ASCII-text form.
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ body: RFC_2822.Message.Body,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
+    ) where Buffer.Element == Byte {
         buffer.append(contentsOf: body.bytes)
     }
+}
 
-    /// Error type (body parsing never fails)
+extension RFC_2822.Message.Body {
+    /// Error type (body parsing never fails).
     public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
         case never
 
@@ -76,22 +82,26 @@ extension RFC_2822.Message.Body: Binary.ASCII.Serializable {
         }
     }
 
-    /// Parses a message body from ASCII bytes (AUTHORITATIVE IMPLEMENTATION)
+    /// Creates a body from raw wire bytes — the byte-domain parse entry.
     ///
-    /// RFC 2822 body is simply a sequence of bytes. No validation is performed
-    /// beyond accepting the raw bytes.
-    ///
-    /// - Parameter bytes: The body content as bytes
-    public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
-    where Bytes.Element == Byte {
+    /// RFC 2822 §2.3: the body is a sequence of bytes; no validation beyond
+    /// accepting the raw bytes (hence non-throwing).
+    public init<Bytes: Collection>(binary bytes: Bytes) where Bytes.Element == Byte {
         self.init(__unchecked: (), bytes: Array(bytes))
     }
 }
 
 // MARK: - Protocol Conformances
 
-extension RFC_2822.Message.Body: Binary.ASCII.RawRepresentable {
-    public typealias RawValue = String
+extension RFC_2822.Message.Body: Swift.RawRepresentable {
+    /// The body decoded as a UTF-8 string (lossy for non-UTF-8 byte content).
+    ///
+    /// Re-provides `Swift.RawRepresentable` directly — the retired
+    /// `Binary.ASCII.RawRepresentable` no longer synthesizes it.
+    public var rawValue: String { description }
+
+    /// Creates a body from `rawValue`'s UTF-8 bytes.
+    public init?(rawValue: String) { self.init(rawValue) }
 }
 
 extension RFC_2822.Message.Body {
@@ -105,7 +115,12 @@ extension RFC_2822.Message.Body {
     }
 }
 
-extension RFC_2822.Message.Body: CustomStringConvertible {}
+extension RFC_2822.Message.Body: CustomStringConvertible {
+    /// The body decoded as UTF-8 text.
+    public var description: String {
+        String(decoding: bytes, as: UTF8.self)
+    }
+}
 
 extension RFC_2822.Message.Body: Codable {
     public func encode(to encoder: any Encoder) throws {

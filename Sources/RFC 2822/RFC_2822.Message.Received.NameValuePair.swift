@@ -11,7 +11,9 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import ASCII_Serializer_Primitives
+public import ASCII_Serializer_Primitives
+public import Binary_Serializable_Primitives
+public import Parseable_ASCII_Primitives
 import INCITS_4_1986
 
 extension RFC_2822.Message.Received {
@@ -48,21 +50,45 @@ extension RFC_2822.Message.Received {
     }
 }
 
-// MARK: - Binary.ASCII.Serializable
+// MARK: - ASCII.Serializable / Binary.Serializable ([FAM-012] format siblings)
 
-extension RFC_2822.Message.Received.NameValuePair: Binary.ASCII.Serializable {
-    static public func serialize<Buffer>(
-        ascii pair: RFC_2822.Message.Received.NameValuePair,
+extension RFC_2822.Message.Received.NameValuePair: ASCII.Serializable, Binary.Serializable {
+    /// Serializes the pair as `name value` ASCII text (value omitted when empty).
+    ///
+    /// [FAM-012] text sibling — emits the typed text substrate `ASCII.Code`.
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ pair: RFC_2822.Message.Received.NameValuePair,
         into buffer: inout Buffer
-    ) where Buffer: RangeReplaceableCollection, Buffer.Element == Byte {
+    ) where Buffer.Element == ASCII.Code {
         buffer.reserveCapacity(pair.name.count + 1 + pair.value.count)
-
-        buffer.append(contentsOf: pair.name.utf8)
+        for byte in pair.name.utf8 { buffer.append(ASCII.Code(byte)) }
         if !pair.value.isEmpty {
             buffer.append(ASCII.Code.space)
-            buffer.append(contentsOf: pair.value.utf8)
+            for byte in pair.value.utf8 { buffer.append(ASCII.Code(byte)) }
         }
     }
+
+    /// Serializes the pair as `name value` wire bytes (value omitted when empty).
+    ///
+    /// [FAM-012] binary sibling. Clause-9: an independent body re-emitting the
+    /// grammar directly into the `Byte` domain — byte-equivalent to the text
+    /// form; the ASCII==Binary equivalence test guards the two against drift.
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ pair: RFC_2822.Message.Received.NameValuePair,
+        into buffer: inout Buffer
+    ) where Buffer.Element == Byte {
+        buffer.reserveCapacity(pair.name.count + 1 + pair.value.count)
+        for byte in pair.name.utf8 { buffer.append(Byte(byte)) }
+        if !pair.value.isEmpty {
+            buffer.append(ASCII.Code.space.byte)
+            for byte in pair.value.utf8 { buffer.append(Byte(byte)) }
+        }
+    }
+}
+
+// MARK: - ASCII.Parseable ([FAM-012] parse — free-standing init; marker requirement seal-last)
+
+extension RFC_2822.Message.Received.NameValuePair: ASCII.Parseable {
 
     /// Parses a name-value pair from ASCII bytes (AUTHORITATIVE IMPLEMENTATION)
     ///
@@ -86,7 +112,7 @@ extension RFC_2822.Message.Received.NameValuePair: Binary.ASCII.Serializable {
     ///
     /// - Parameter bytes: The name-value pair as ASCII bytes
     /// - Throws: `Error` if parsing fails
-    public init<Bytes: Collection>(ascii bytes: Bytes, in context: Void = ()) throws(Error)
+    public init<Bytes: Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -150,10 +176,25 @@ extension RFC_2822.Message.Received.NameValuePair: Binary.ASCII.Serializable {
     }
 }
 
-// MARK: - Protocol Conformances
+// MARK: - RawRepresentable / CustomStringConvertible
 
-extension RFC_2822.Message.Received.NameValuePair: Binary.ASCII.RawRepresentable {
-    public typealias RawValue = String
+extension RFC_2822.Message.Received.NameValuePair: Swift.RawRepresentable {
+    /// The canonical `name value` string form.
+    ///
+    /// Re-provides `Swift.RawRepresentable` directly — the retired
+    /// `Binary.ASCII.RawRepresentable` no longer synthesizes it.
+    public var rawValue: String { description }
+
+    /// Creates a pair by parsing `rawValue`, or `nil` if it is malformed.
+    public init?(rawValue: String) {
+        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+    }
 }
 
-extension RFC_2822.Message.Received.NameValuePair: CustomStringConvertible {}
+extension RFC_2822.Message.Received.NameValuePair: CustomStringConvertible {
+    /// The pair in `name value` form (value omitted when empty) — the same
+    /// grammar the `ASCII.Serializable` / `Binary.Serializable` verbs emit.
+    public var description: String {
+        value.isEmpty ? name : "\(name) \(value)"
+    }
+}
