@@ -1,6 +1,6 @@
 # Swift RFC 2822
 
-[![CI](https://github.com/swift-standards/swift-rfc-2822/workflows/CI/badge.svg)](https://github.com/swift-standards/swift-rfc-2822/actions/workflows/ci.yml)
+[![CI](https://github.com/swift-ietf/swift-rfc-2822/workflows/CI/badge.svg)](https://github.com/swift-ietf/swift-rfc-2822/actions/workflows/ci.yml)
 ![Development Status](https://img.shields.io/badge/status-active--development-blue.svg)
 
 Swift implementation of RFC 2822: Internet Message Format standard.
@@ -27,7 +27,7 @@ Add swift-rfc-2822 to your package dependencies:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/swift-standards/swift-rfc-2822.git", from: "0.1.0")
+    .package(url: "https://github.com/swift-ietf/swift-rfc-2822.git", from: "0.5.5")
 ]
 ```
 
@@ -201,8 +201,8 @@ print(messageID.stringValue)
 ## Related Packages
 
 ### Related Standards
-- [swift-rfc-2045](https://github.com/swift-standards/swift-rfc-2045) - MIME Part One: Format of Internet Message Bodies
-- [swift-rfc-2046](https://github.com/swift-standards/swift-rfc-2046) - MIME Part Two: Media Types
+- [swift-rfc-2045](https://github.com/swift-ietf/swift-rfc-2045) - MIME Part One: Format of Internet Message Bodies
+- [swift-rfc-2046](https://github.com/swift-ietf/swift-rfc-2046) - MIME Part Two: Media Types
 
 ## Requirements
 
