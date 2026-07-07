@@ -13,8 +13,8 @@
 
 public import ASCII_Serializer_Primitives
 public import Binary_Serializable_Primitives
-public import Parseable_ASCII_Primitives
 import INCITS_4_1986
+public import Parseable_ASCII_Primitives
 
 extension RFC_2822.Message {
     /// Return path for trace fields
@@ -101,7 +101,7 @@ extension RFC_2822.Message.Path: ASCII.Parseable {
     /// ## Example
     ///
     /// ```swift
-    /// let path = try RFC_2822.Message.Path(ascii: Array<Byte>("<user@example.com>".utf8))
+    /// let path = try RFC_2822.Message.Path(ascii: [Byte]("<user@example.com>".utf8))
     /// ```
     ///
     /// - Parameter bytes: The path as ASCII bytes
@@ -114,31 +114,35 @@ extension RFC_2822.Message.Path: ASCII.Parseable {
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
         var codeArray: [ASCII.Code]
         do {
-            codeArray = try Array<ASCII.Code>(bytes)
+            codeArray = try [ASCII.Code](bytes)
         } catch {
             throw Error.missingAngleBrackets(String(decoding: bytes, as: UTF8.self))
         }
 
         // Strip leading/trailing whitespace (CFWS)
         while !codeArray.isEmpty
-            && (codeArray.first == ASCII.Code.space || codeArray.first == ASCII.Code.htab) {
+            && (codeArray.first == ASCII.Code.space || codeArray.first == ASCII.Code.htab)
+        {
             codeArray.removeFirst()
         }
         while !codeArray.isEmpty
-            && (codeArray.last == ASCII.Code.space || codeArray.last == ASCII.Code.htab) {
+            && (codeArray.last == ASCII.Code.space || codeArray.last == ASCII.Code.htab)
+        {
             codeArray.removeLast()
         }
 
         guard !codeArray.isEmpty else { throw Error.empty }
 
         // Must be enclosed in angle brackets
-        guard codeArray.first == ASCII.Code.lessThanSign && codeArray.last == ASCII.Code.greaterThanSign
+        guard
+            codeArray.first == ASCII.Code.lessThanSign
+                && codeArray.last == ASCII.Code.greaterThanSign
         else {
             throw Error.missingAngleBrackets(String(decoding: bytes, as: UTF8.self))
         }
 
         // Extract content between < and > (as Byte for downstream AddrSpec init)
-        let contentBytes = Array<Byte>(codeArray[1..<(codeArray.count - 1)])
+        let contentBytes = [Byte](codeArray[1..<(codeArray.count - 1)])
 
         // Empty path <> is valid
         if contentBytes.isEmpty {

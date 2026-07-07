@@ -13,8 +13,8 @@
 
 public import ASCII_Serializer_Primitives
 public import Binary_Serializable_Primitives
-public import Parseable_ASCII_Primitives
 import INCITS_4_1986
+public import Parseable_ASCII_Primitives
 
 extension RFC_2822.Message {
     /// Received trace field
@@ -110,7 +110,7 @@ extension RFC_2822.Message.Received: ASCII.Parseable {
     /// ## Example
     ///
     /// ```swift
-    /// let received = try RFC_2822.Message.Received(ascii: Array<Byte>("from mail.example.com; 1234567890".utf8))
+    /// let received = try RFC_2822.Message.Received(ascii: [Byte]("from mail.example.com; 1234567890".utf8))
     /// ```
     ///
     /// - Parameter bytes: The received field as ASCII bytes
@@ -123,7 +123,7 @@ extension RFC_2822.Message.Received: ASCII.Parseable {
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
         let codeArray: [ASCII.Code]
         do {
-            codeArray = try Array<ASCII.Code>(bytes)
+            codeArray = try [ASCII.Code](bytes)
         } catch {
             throw Error.missingSemicolon(String(decoding: bytes, as: UTF8.self))
         }
@@ -143,7 +143,8 @@ extension RFC_2822.Message.Received: ASCII.Parseable {
 
         // Strip leading whitespace from timestamp
         while !timestampCodes.isEmpty
-            && (timestampCodes.first == ASCII.Code.space || timestampCodes.first == ASCII.Code.htab) {
+            && (timestampCodes.first == ASCII.Code.space || timestampCodes.first == ASCII.Code.htab)
+        {
             timestampCodes.removeFirst()
         }
 
@@ -153,7 +154,7 @@ extension RFC_2822.Message.Received: ASCII.Parseable {
 
         let timestamp: RFC_2822.Timestamp
         do {
-            timestamp = try RFC_2822.Timestamp(ascii: Array<Byte>(timestampCodes))
+            timestamp = try RFC_2822.Timestamp(ascii: [Byte](timestampCodes))
         } catch {
             throw Error.invalidTimestamp(error)
         }

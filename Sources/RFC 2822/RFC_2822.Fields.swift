@@ -13,8 +13,8 @@
 
 public import ASCII_Serializer_Primitives
 public import Binary_Serializable_Primitives
-public import Parseable_ASCII_Primitives
 import INCITS_4_1986
+public import Parseable_ASCII_Primitives
 
 extension RFC_2822 {
     /// Message fields as defined in RFC 2822 Section 3.6
@@ -164,16 +164,25 @@ extension RFC_2822.Fields: ASCII.Serializable, Binary.Serializable {
             buffer.append(ASCII.Code.space)
         }
         func string(_ s: String) { for byte in s.utf8 { buffer.append(ASCII.Code(byte)) } }
-        func crlf() { buffer.append(ASCII.Code.cr); buffer.append(ASCII.Code.lf) }
+        func crlf() {
+            buffer.append(ASCII.Code.cr)
+            buffer.append(ASCII.Code.lf)
+        }
         func mailboxList(_ list: [RFC_2822.Mailbox]) {
             for (index, mailbox) in list.enumerated() {
-                if index > 0 { buffer.append(ASCII.Code.comma); buffer.append(ASCII.Code.space) }
+                if index > 0 {
+                    buffer.append(ASCII.Code.comma)
+                    buffer.append(ASCII.Code.space)
+                }
                 RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
             }
         }
         func addressList(_ list: [RFC_2822.Address]) {
             for (index, address) in list.enumerated() {
-                if index > 0 { buffer.append(ASCII.Code.comma); buffer.append(ASCII.Code.space) }
+                if index > 0 {
+                    buffer.append(ASCII.Code.comma)
+                    buffer.append(ASCII.Code.space)
+                }
                 RFC_2822.Address.serialize(address, into: &buffer)
             }
         }
@@ -185,27 +194,79 @@ extension RFC_2822.Fields: ASCII.Serializable, Binary.Serializable {
         }
 
         for received in fields.receivedFields {
-            name("Received"); RFC_2822.Message.Received.serialize(received, into: &buffer); crlf()
+            name("Received")
+            RFC_2822.Message.Received.serialize(received, into: &buffer)
+            crlf()
         }
         if let returnPath = fields.returnPath {
-            name("Return-Path"); RFC_2822.Message.Path.serialize(returnPath, into: &buffer); crlf()
+            name("Return-Path")
+            RFC_2822.Message.Path.serialize(returnPath, into: &buffer)
+            crlf()
         }
         for block in fields.resentFields {
             RFC_2822.Message.ResentBlock.serialize(block, into: &buffer)
         }
-        name("Date"); RFC_2822.Timestamp.serialize(fields.originationDate, into: &buffer); crlf()
-        name("From"); mailboxList(fields.from); crlf()
-        if let sender = fields.sender { name("Sender"); RFC_2822.Mailbox.serialize(sender, into: &buffer); crlf() }
-        if let replyTo = fields.replyTo { name("Reply-To"); addressList(replyTo); crlf() }
-        if let to = fields.to { name("To"); addressList(to); crlf() }
-        if let cc = fields.cc { name("Cc"); addressList(cc); crlf() }
-        if let bcc = fields.bcc { name("Bcc"); addressList(bcc); crlf() }
-        if let messageID = fields.messageID { name("Message-ID"); RFC_2822.Message.ID.serialize(messageID, into: &buffer); crlf() }
-        if let inReplyTo = fields.inReplyTo { name("In-Reply-To"); idList(inReplyTo); crlf() }
-        if let references = fields.references { name("References"); idList(references); crlf() }
-        if let subject = fields.subject { name("Subject"); string(subject); crlf() }
-        if let comments = fields.comments { name("Comments"); string(comments); crlf() }
-        if let keywords = fields.keywords { name("Keywords"); string(keywords.joined(separator: ", ")); crlf() }
+        name("Date")
+        RFC_2822.Timestamp.serialize(fields.originationDate, into: &buffer)
+        crlf()
+        name("From")
+        mailboxList(fields.from)
+        crlf()
+        if let sender = fields.sender {
+            name("Sender")
+            RFC_2822.Mailbox.serialize(sender, into: &buffer)
+            crlf()
+        }
+        if let replyTo = fields.replyTo {
+            name("Reply-To")
+            addressList(replyTo)
+            crlf()
+        }
+        if let to = fields.to {
+            name("To")
+            addressList(to)
+            crlf()
+        }
+        if let cc = fields.cc {
+            name("Cc")
+            addressList(cc)
+            crlf()
+        }
+        if let bcc = fields.bcc {
+            name("Bcc")
+            addressList(bcc)
+            crlf()
+        }
+        if let messageID = fields.messageID {
+            name("Message-ID")
+            RFC_2822.Message.ID.serialize(messageID, into: &buffer)
+            crlf()
+        }
+        if let inReplyTo = fields.inReplyTo {
+            name("In-Reply-To")
+            idList(inReplyTo)
+            crlf()
+        }
+        if let references = fields.references {
+            name("References")
+            idList(references)
+            crlf()
+        }
+        if let subject = fields.subject {
+            name("Subject")
+            string(subject)
+            crlf()
+        }
+        if let comments = fields.comments {
+            name("Comments")
+            string(comments)
+            crlf()
+        }
+        if let keywords = fields.keywords {
+            name("Keywords")
+            string(keywords.joined(separator: ", "))
+            crlf()
+        }
     }
 
     /// Serializes the header fields as a `field-name: value` block (wire bytes).
@@ -223,16 +284,25 @@ extension RFC_2822.Fields: ASCII.Serializable, Binary.Serializable {
             buffer.append(ASCII.Code.space.byte)
         }
         func string(_ s: String) { for byte in s.utf8 { buffer.append(Byte(byte)) } }
-        func crlf() { buffer.append(ASCII.Code.cr.byte); buffer.append(ASCII.Code.lf.byte) }
+        func crlf() {
+            buffer.append(ASCII.Code.cr.byte)
+            buffer.append(ASCII.Code.lf.byte)
+        }
         func mailboxList(_ list: [RFC_2822.Mailbox]) {
             for (index, mailbox) in list.enumerated() {
-                if index > 0 { buffer.append(ASCII.Code.comma.byte); buffer.append(ASCII.Code.space.byte) }
+                if index > 0 {
+                    buffer.append(ASCII.Code.comma.byte)
+                    buffer.append(ASCII.Code.space.byte)
+                }
                 RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
             }
         }
         func addressList(_ list: [RFC_2822.Address]) {
             for (index, address) in list.enumerated() {
-                if index > 0 { buffer.append(ASCII.Code.comma.byte); buffer.append(ASCII.Code.space.byte) }
+                if index > 0 {
+                    buffer.append(ASCII.Code.comma.byte)
+                    buffer.append(ASCII.Code.space.byte)
+                }
                 RFC_2822.Address.serialize(address, into: &buffer)
             }
         }
@@ -244,27 +314,79 @@ extension RFC_2822.Fields: ASCII.Serializable, Binary.Serializable {
         }
 
         for received in fields.receivedFields {
-            name("Received"); RFC_2822.Message.Received.serialize(received, into: &buffer); crlf()
+            name("Received")
+            RFC_2822.Message.Received.serialize(received, into: &buffer)
+            crlf()
         }
         if let returnPath = fields.returnPath {
-            name("Return-Path"); RFC_2822.Message.Path.serialize(returnPath, into: &buffer); crlf()
+            name("Return-Path")
+            RFC_2822.Message.Path.serialize(returnPath, into: &buffer)
+            crlf()
         }
         for block in fields.resentFields {
             RFC_2822.Message.ResentBlock.serialize(block, into: &buffer)
         }
-        name("Date"); RFC_2822.Timestamp.serialize(fields.originationDate, into: &buffer); crlf()
-        name("From"); mailboxList(fields.from); crlf()
-        if let sender = fields.sender { name("Sender"); RFC_2822.Mailbox.serialize(sender, into: &buffer); crlf() }
-        if let replyTo = fields.replyTo { name("Reply-To"); addressList(replyTo); crlf() }
-        if let to = fields.to { name("To"); addressList(to); crlf() }
-        if let cc = fields.cc { name("Cc"); addressList(cc); crlf() }
-        if let bcc = fields.bcc { name("Bcc"); addressList(bcc); crlf() }
-        if let messageID = fields.messageID { name("Message-ID"); RFC_2822.Message.ID.serialize(messageID, into: &buffer); crlf() }
-        if let inReplyTo = fields.inReplyTo { name("In-Reply-To"); idList(inReplyTo); crlf() }
-        if let references = fields.references { name("References"); idList(references); crlf() }
-        if let subject = fields.subject { name("Subject"); string(subject); crlf() }
-        if let comments = fields.comments { name("Comments"); string(comments); crlf() }
-        if let keywords = fields.keywords { name("Keywords"); string(keywords.joined(separator: ", ")); crlf() }
+        name("Date")
+        RFC_2822.Timestamp.serialize(fields.originationDate, into: &buffer)
+        crlf()
+        name("From")
+        mailboxList(fields.from)
+        crlf()
+        if let sender = fields.sender {
+            name("Sender")
+            RFC_2822.Mailbox.serialize(sender, into: &buffer)
+            crlf()
+        }
+        if let replyTo = fields.replyTo {
+            name("Reply-To")
+            addressList(replyTo)
+            crlf()
+        }
+        if let to = fields.to {
+            name("To")
+            addressList(to)
+            crlf()
+        }
+        if let cc = fields.cc {
+            name("Cc")
+            addressList(cc)
+            crlf()
+        }
+        if let bcc = fields.bcc {
+            name("Bcc")
+            addressList(bcc)
+            crlf()
+        }
+        if let messageID = fields.messageID {
+            name("Message-ID")
+            RFC_2822.Message.ID.serialize(messageID, into: &buffer)
+            crlf()
+        }
+        if let inReplyTo = fields.inReplyTo {
+            name("In-Reply-To")
+            idList(inReplyTo)
+            crlf()
+        }
+        if let references = fields.references {
+            name("References")
+            idList(references)
+            crlf()
+        }
+        if let subject = fields.subject {
+            name("Subject")
+            string(subject)
+            crlf()
+        }
+        if let comments = fields.comments {
+            name("Comments")
+            string(comments)
+            crlf()
+        }
+        if let keywords = fields.keywords {
+            name("Keywords")
+            string(keywords.joined(separator: ", "))
+            crlf()
+        }
     }
 }
 
@@ -319,7 +441,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
         let codeArray: [ASCII.Code]
         do {
-            codeArray = try Array<ASCII.Code>(bytes)
+            codeArray = try [ASCII.Code](bytes)
         } catch {
             throw Error.invalidFieldFormat("", String(decoding: bytes, as: UTF8.self))
         }
@@ -327,10 +449,14 @@ extension RFC_2822.Fields: ASCII.Parseable {
         // Helper: trim whitespace from code array
         func trimWhitespace(_ input: [ASCII.Code]) -> [ASCII.Code] {
             var result = input
-            while !result.isEmpty && (result.first == ASCII.Code.space || result.first == ASCII.Code.htab) {
+            while !result.isEmpty
+                && (result.first == ASCII.Code.space || result.first == ASCII.Code.htab)
+            {
                 result.removeFirst()
             }
-            while !result.isEmpty && (result.last == ASCII.Code.space || result.last == ASCII.Code.htab) {
+            while !result.isEmpty
+                && (result.last == ASCII.Code.space || result.last == ASCII.Code.htab)
+            {
                 result.removeLast()
             }
             return result
@@ -338,7 +464,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
 
         // Helper: check if codes equal string (case-insensitive)
         func codesEqualCaseInsensitive(_ codes: [ASCII.Code], _ string: String) -> Bool {
-            let stringCodes = (try? Array<ASCII.Code>(string.utf8)) ?? []
+            let stringCodes = (try? [ASCII.Code](string.utf8)) ?? []
             guard codes.count == stringCodes.count else { return false }
             for i in 0..<codes.count {
                 let c1 = codes[i].lowercased()
@@ -372,13 +498,15 @@ extension RFC_2822.Fields: ASCII.Parseable {
         while i < codeArray.count {
             let code = codeArray[i]
 
-            if code == ASCII.Code.cr && i + 1 < codeArray.count && codeArray[i + 1] == ASCII.Code.lf {
+            if code == ASCII.Code.cr && i + 1 < codeArray.count && codeArray[i + 1] == ASCII.Code.lf
+            {
                 // CRLF found
                 i += 2
 
                 // Check if next line is a continuation (starts with space/tab)
                 if i < codeArray.count
-                    && (codeArray[i] == ASCII.Code.space || codeArray[i] == ASCII.Code.htab) {
+                    && (codeArray[i] == ASCII.Code.space || codeArray[i] == ASCII.Code.htab)
+                {
                     // Folded header - continue current line
                     currentLine.append(ASCII.Code.space)
                     i += 1  // Skip the leading whitespace
@@ -398,7 +526,8 @@ extension RFC_2822.Fields: ASCII.Parseable {
                 i += 1
 
                 if i < codeArray.count
-                    && (codeArray[i] == ASCII.Code.space || codeArray[i] == ASCII.Code.htab) {
+                    && (codeArray[i] == ASCII.Code.space || codeArray[i] == ASCII.Code.htab)
+                {
                     currentLine.append(ASCII.Code.space)
                     i += 1
                 } else {
@@ -442,7 +571,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
         var keywords: [String]?
 
         for (nameCodes, valueCodes) in headers {
-            let valueBytes = Array<Byte>(valueCodes)
+            let valueBytes = [Byte](valueCodes)
             if codesEqualCaseInsensitive(nameCodes, "date") {
                 do {
                     date = try RFC_2822.Timestamp(ascii: valueBytes)
@@ -459,7 +588,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do {
-                            let mailbox = try RFC_2822.Mailbox(ascii: Array<Byte>(trimmed))
+                            let mailbox = try RFC_2822.Mailbox(ascii: [Byte](trimmed))
                             from.append(mailbox)
                         } catch let error {
                             throw Error.invalidMailbox(error)
@@ -479,7 +608,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do {
-                            let address = try RFC_2822.Address(ascii: Array<Byte>(trimmed))
+                            let address = try RFC_2822.Address(ascii: [Byte](trimmed))
                             addresses.append(address)
                         } catch let error {
                             throw Error.invalidAddress(error)
@@ -494,7 +623,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do {
-                            let address = try RFC_2822.Address(ascii: Array<Byte>(trimmed))
+                            let address = try RFC_2822.Address(ascii: [Byte](trimmed))
                             addresses.append(address)
                         } catch let error {
                             throw Error.invalidAddress(error)
@@ -509,7 +638,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do {
-                            let address = try RFC_2822.Address(ascii: Array<Byte>(trimmed))
+                            let address = try RFC_2822.Address(ascii: [Byte](trimmed))
                             addresses.append(address)
                         } catch let error {
                             throw Error.invalidAddress(error)
@@ -524,7 +653,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do {
-                            let address = try RFC_2822.Address(ascii: Array<Byte>(trimmed))
+                            let address = try RFC_2822.Address(ascii: [Byte](trimmed))
                             addresses.append(address)
                         } catch let error {
                             throw Error.invalidAddress(error)
@@ -546,7 +675,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty && trimmed.first == ASCII.Code.lessThanSign {
                         do {
-                            let id = try RFC_2822.Message.ID(ascii: Array<Byte>(trimmed))
+                            let id = try RFC_2822.Message.ID(ascii: [Byte](trimmed))
                             ids.append(id)
                         } catch let error {
                             throw Error.invalidMessageID(error)
@@ -561,7 +690,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty && trimmed.first == ASCII.Code.lessThanSign {
                         do {
-                            let id = try RFC_2822.Message.ID(ascii: Array<Byte>(trimmed))
+                            let id = try RFC_2822.Message.ID(ascii: [Byte](trimmed))
                             ids.append(id)
                         } catch let error {
                             throw Error.invalidMessageID(error)

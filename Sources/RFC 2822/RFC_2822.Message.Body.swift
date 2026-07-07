@@ -111,7 +111,7 @@ extension RFC_2822.Message.Body {
     ///
     /// - Parameter string: The message body as string
     public init(_ string: String) {
-        self.init(__unchecked: (), bytes: Array<Byte>(string.utf8))
+        self.init(__unchecked: (), bytes: [Byte](string.utf8))
     }
 }
 

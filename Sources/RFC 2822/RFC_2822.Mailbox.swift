@@ -13,8 +13,8 @@
 
 public import ASCII_Serializer_Primitives
 public import Binary_Serializable_Primitives
-public import Parseable_ASCII_Primitives
 import INCITS_4_1986
+public import Parseable_ASCII_Primitives
 
 extension RFC_2822 {
     /// RFC 2822 mailbox (name-addr or addr-spec)
@@ -150,7 +150,7 @@ extension RFC_2822.Mailbox: ASCII.Parseable {
     /// ## Example
     ///
     /// ```swift
-    /// let bytes = Array<Byte>("John Doe <john@example.com>".utf8)
+    /// let bytes = [Byte]("John Doe <john@example.com>".utf8)
     /// let mailbox = try RFC_2822.Mailbox(ascii: bytes)
     /// ```
     ///
@@ -164,7 +164,7 @@ extension RFC_2822.Mailbox: ASCII.Parseable {
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
         let codeArray: [ASCII.Code]
         do {
-            codeArray = try Array<ASCII.Code>(bytes)
+            codeArray = try [ASCII.Code](bytes)
         } catch {
             throw Error.invalidFormat(String(decoding: bytes, as: UTF8.self))
         }
@@ -184,12 +184,14 @@ extension RFC_2822.Mailbox: ASCII.Parseable {
             trimmedDisplayNameCodes.append(contentsOf: codeArray[..<openIndex])
             while !trimmedDisplayNameCodes.isEmpty
                 && (trimmedDisplayNameCodes.first == ASCII.Code.space
-                    || trimmedDisplayNameCodes.first == ASCII.Code.htab) {
+                    || trimmedDisplayNameCodes.first == ASCII.Code.htab)
+            {
                 trimmedDisplayNameCodes.removeFirst()
             }
             while !trimmedDisplayNameCodes.isEmpty
                 && (trimmedDisplayNameCodes.last == ASCII.Code.space
-                    || trimmedDisplayNameCodes.last == ASCII.Code.htab) {
+                    || trimmedDisplayNameCodes.last == ASCII.Code.htab)
+            {
                 trimmedDisplayNameCodes.removeLast()
             }
 
@@ -198,7 +200,8 @@ extension RFC_2822.Mailbox: ASCII.Parseable {
             // Remove quotes if present
             if !trimmedDisplayNameCodes.isEmpty
                 && trimmedDisplayNameCodes.first == ASCII.Code.quotationMark
-                && trimmedDisplayNameCodes.last == ASCII.Code.quotationMark {
+                && trimmedDisplayNameCodes.last == ASCII.Code.quotationMark
+            {
                 displayName = String(
                     decoding: trimmedDisplayNameCodes[1..<(trimmedDisplayNameCodes.count - 1)],
                     as: UTF8.self
@@ -207,7 +210,7 @@ extension RFC_2822.Mailbox: ASCII.Parseable {
 
             // Extract addr-spec (between < and >) as Byte for downstream init
             let addrSpecStart = codeArray.index(after: openIndex)
-            let addrSpecBytes = Array<Byte>(codeArray[addrSpecStart..<closeIndex])
+            let addrSpecBytes = [Byte](codeArray[addrSpecStart..<closeIndex])
 
             let emailAddress: RFC_2822.AddrSpec
             do {

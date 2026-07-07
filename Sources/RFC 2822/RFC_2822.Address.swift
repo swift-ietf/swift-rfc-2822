@@ -13,8 +13,8 @@
 
 public import ASCII_Serializer_Primitives
 public import Binary_Serializable_Primitives
-public import Parseable_ASCII_Primitives
 import INCITS_4_1986
+public import Parseable_ASCII_Primitives
 
 extension RFC_2822 {
     /// Represents an email address as defined in RFC 2822 Section 3.4
@@ -162,7 +162,7 @@ extension RFC_2822.Address: ASCII.Parseable {
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
         let codeArray: [ASCII.Code]
         do {
-            codeArray = try Array<ASCII.Code>(bytes)
+            codeArray = try [ASCII.Code](bytes)
         } catch {
             throw Error.invalidGroup(String(decoding: bytes, as: UTF8.self))
         }
@@ -194,18 +194,23 @@ extension RFC_2822.Address: ASCII.Parseable {
             // Extract display name (everything before :) and trim whitespace
             var displayNameCodes: [ASCII.Code] = Array(codeArray[..<colonIdx])
             while !displayNameCodes.isEmpty
-                && (displayNameCodes.first == ASCII.Code.space || displayNameCodes.first == ASCII.Code.htab) {
+                && (displayNameCodes.first == ASCII.Code.space
+                    || displayNameCodes.first == ASCII.Code.htab)
+            {
                 displayNameCodes.removeFirst()
             }
             while !displayNameCodes.isEmpty
-                && (displayNameCodes.last == ASCII.Code.space || displayNameCodes.last == ASCII.Code.htab) {
+                && (displayNameCodes.last == ASCII.Code.space
+                    || displayNameCodes.last == ASCII.Code.htab)
+            {
                 displayNameCodes.removeLast()
             }
 
             var displayName: String
             // Remove quotes if present
             if !displayNameCodes.isEmpty && displayNameCodes.first == ASCII.Code.quotationMark
-                && displayNameCodes.last == ASCII.Code.quotationMark {
+                && displayNameCodes.last == ASCII.Code.quotationMark
+            {
                 displayName = String(
                     decoding: displayNameCodes[1..<(displayNameCodes.count - 1)],
                     as: UTF8.self
@@ -241,16 +246,19 @@ extension RFC_2822.Address: ASCII.Parseable {
                         // End of this mailbox - trim whitespace
                         var trimmed = currentMailbox
                         while !trimmed.isEmpty
-                            && (trimmed.first == ASCII.Code.space || trimmed.first == ASCII.Code.htab) {
+                            && (trimmed.first == ASCII.Code.space
+                                || trimmed.first == ASCII.Code.htab)
+                        {
                             trimmed.removeFirst()
                         }
                         while !trimmed.isEmpty
-                            && (trimmed.last == ASCII.Code.space || trimmed.last == ASCII.Code.htab) {
+                            && (trimmed.last == ASCII.Code.space || trimmed.last == ASCII.Code.htab)
+                        {
                             trimmed.removeLast()
                         }
                         if !trimmed.isEmpty {
                             do {
-                                let mailbox = try RFC_2822.Mailbox(ascii: Array<Byte>(trimmed))
+                                let mailbox = try RFC_2822.Mailbox(ascii: [Byte](trimmed))
                                 mailboxes.append(mailbox)
                             } catch {
                                 throw Error.invalidMailbox(error)
@@ -265,16 +273,18 @@ extension RFC_2822.Address: ASCII.Parseable {
                 // Don't forget the last mailbox - trim whitespace
                 var trimmed = currentMailbox
                 while !trimmed.isEmpty
-                    && (trimmed.first == ASCII.Code.space || trimmed.first == ASCII.Code.htab) {
+                    && (trimmed.first == ASCII.Code.space || trimmed.first == ASCII.Code.htab)
+                {
                     trimmed.removeFirst()
                 }
                 while !trimmed.isEmpty
-                    && (trimmed.last == ASCII.Code.space || trimmed.last == ASCII.Code.htab) {
+                    && (trimmed.last == ASCII.Code.space || trimmed.last == ASCII.Code.htab)
+                {
                     trimmed.removeLast()
                 }
                 if !trimmed.isEmpty {
                     do {
-                        let mailbox = try RFC_2822.Mailbox(ascii: Array<Byte>(trimmed))
+                        let mailbox = try RFC_2822.Mailbox(ascii: [Byte](trimmed))
                         mailboxes.append(mailbox)
                     } catch {
                         throw Error.invalidMailbox(error)

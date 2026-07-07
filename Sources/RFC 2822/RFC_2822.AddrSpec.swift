@@ -13,8 +13,8 @@
 
 public import ASCII_Serializer_Primitives
 public import Binary_Serializable_Primitives
-public import Parseable_ASCII_Primitives
 import INCITS_4_1986
+public import Parseable_ASCII_Primitives
 
 extension RFC_2822 {
     /// RFC 2822 addr-spec (local-part@domain)
@@ -67,7 +67,7 @@ extension RFC_2822 {
             }
             let localCodes: [ASCII.Code]
             do {
-                localCodes = try Array<ASCII.Code>(localPart.utf8)
+                localCodes = try [ASCII.Code](localPart.utf8)
             } catch {
                 throw Error.invalidLocalPart(localPart)
             }
@@ -79,7 +79,7 @@ extension RFC_2822 {
             }
             let domainCodes: [ASCII.Code]
             do {
-                domainCodes = try Array<ASCII.Code>(domain.utf8)
+                domainCodes = try [ASCII.Code](domain.utf8)
             } catch {
                 throw Error.invalidDomain(domain)
             }

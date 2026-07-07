@@ -13,8 +13,8 @@
 
 public import ASCII_Serializer_Primitives
 public import Binary_Serializable_Primitives
-public import Parseable_ASCII_Primitives
 import INCITS_4_1986
+public import Parseable_ASCII_Primitives
 
 extension RFC_2822.Message.Received {
     /// Name-value pair in a Received trace field
@@ -107,7 +107,7 @@ extension RFC_2822.Message.Received.NameValuePair: ASCII.Parseable {
     /// ## Example
     ///
     /// ```swift
-    /// let pair = try RFC_2822.Message.Received.NameValuePair(ascii: Array<Byte>("from mail.example.com".utf8))
+    /// let pair = try RFC_2822.Message.Received.NameValuePair(ascii: [Byte]("from mail.example.com".utf8))
     /// ```
     ///
     /// - Parameter bytes: The name-value pair as ASCII bytes
@@ -120,18 +120,20 @@ extension RFC_2822.Message.Received.NameValuePair: ASCII.Parseable {
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
         var codeArray: [ASCII.Code]
         do {
-            codeArray = try Array<ASCII.Code>(bytes)
+            codeArray = try [ASCII.Code](bytes)
         } catch {
             throw Error.invalidName(String(decoding: bytes, as: UTF8.self))
         }
 
         // Strip leading/trailing whitespace
         while !codeArray.isEmpty
-            && (codeArray.first == ASCII.Code.space || codeArray.first == ASCII.Code.htab) {
+            && (codeArray.first == ASCII.Code.space || codeArray.first == ASCII.Code.htab)
+        {
             codeArray.removeFirst()
         }
         while !codeArray.isEmpty
-            && (codeArray.last == ASCII.Code.space || codeArray.last == ASCII.Code.htab) {
+            && (codeArray.last == ASCII.Code.space || codeArray.last == ASCII.Code.htab)
+        {
             codeArray.removeLast()
         }
 
@@ -155,7 +157,9 @@ extension RFC_2822.Message.Received.NameValuePair: ASCII.Parseable {
             // Extract value after whitespace
             var valueStart = endIndex
             while valueStart < codeArray.count
-                && (codeArray[valueStart] == ASCII.Code.space || codeArray[valueStart] == ASCII.Code.htab) {
+                && (codeArray[valueStart] == ASCII.Code.space
+                    || codeArray[valueStart] == ASCII.Code.htab)
+            {
                 valueStart += 1
             }
 

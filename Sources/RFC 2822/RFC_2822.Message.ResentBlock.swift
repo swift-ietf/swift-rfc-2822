@@ -13,8 +13,8 @@
 
 public import ASCII_Serializer_Primitives
 public import Binary_Serializable_Primitives
-public import Parseable_ASCII_Primitives
 import INCITS_4_1986
+public import Parseable_ASCII_Primitives
 
 extension RFC_2822.Message {
     /// Block of resent fields
@@ -112,24 +112,54 @@ extension RFC_2822.Message.ResentBlock: ASCII.Serializable, Binary.Serializable 
         }
         func mailboxes(_ list: [RFC_2822.Mailbox]) {
             for (index, mailbox) in list.enumerated() {
-                if index > 0 { buffer.append(ASCII.Code.comma); buffer.append(ASCII.Code.space) }
+                if index > 0 {
+                    buffer.append(ASCII.Code.comma)
+                    buffer.append(ASCII.Code.space)
+                }
                 RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
             }
         }
         func addresses(_ list: [RFC_2822.Address]) {
             for (index, address) in list.enumerated() {
-                if index > 0 { buffer.append(ASCII.Code.comma); buffer.append(ASCII.Code.space) }
+                if index > 0 {
+                    buffer.append(ASCII.Code.comma)
+                    buffer.append(ASCII.Code.space)
+                }
                 RFC_2822.Address.serialize(address, into: &buffer)
             }
         }
 
-        name("Resent-Date"); RFC_2822.Timestamp.serialize(block.timestamp, into: &buffer); crlf()
-        name("Resent-From"); mailboxes(block.from); crlf()
-        if let sender = block.sender { name("Resent-Sender"); RFC_2822.Mailbox.serialize(sender, into: &buffer); crlf() }
-        if let to = block.to { name("Resent-To"); addresses(to); crlf() }
-        if let cc = block.cc { name("Resent-Cc"); addresses(cc); crlf() }
-        if let bcc = block.bcc { name("Resent-Bcc"); addresses(bcc); crlf() }
-        if let messageID = block.messageID { name("Resent-Message-ID"); RFC_2822.Message.ID.serialize(messageID, into: &buffer); crlf() }
+        name("Resent-Date")
+        RFC_2822.Timestamp.serialize(block.timestamp, into: &buffer)
+        crlf()
+        name("Resent-From")
+        mailboxes(block.from)
+        crlf()
+        if let sender = block.sender {
+            name("Resent-Sender")
+            RFC_2822.Mailbox.serialize(sender, into: &buffer)
+            crlf()
+        }
+        if let to = block.to {
+            name("Resent-To")
+            addresses(to)
+            crlf()
+        }
+        if let cc = block.cc {
+            name("Resent-Cc")
+            addresses(cc)
+            crlf()
+        }
+        if let bcc = block.bcc {
+            name("Resent-Bcc")
+            addresses(bcc)
+            crlf()
+        }
+        if let messageID = block.messageID {
+            name("Resent-Message-ID")
+            RFC_2822.Message.ID.serialize(messageID, into: &buffer)
+            crlf()
+        }
     }
 
     /// Serializes the resent block as `Resent-*:` field lines (wire bytes).
@@ -152,24 +182,54 @@ extension RFC_2822.Message.ResentBlock: ASCII.Serializable, Binary.Serializable 
         }
         func mailboxes(_ list: [RFC_2822.Mailbox]) {
             for (index, mailbox) in list.enumerated() {
-                if index > 0 { buffer.append(ASCII.Code.comma.byte); buffer.append(ASCII.Code.space.byte) }
+                if index > 0 {
+                    buffer.append(ASCII.Code.comma.byte)
+                    buffer.append(ASCII.Code.space.byte)
+                }
                 RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
             }
         }
         func addresses(_ list: [RFC_2822.Address]) {
             for (index, address) in list.enumerated() {
-                if index > 0 { buffer.append(ASCII.Code.comma.byte); buffer.append(ASCII.Code.space.byte) }
+                if index > 0 {
+                    buffer.append(ASCII.Code.comma.byte)
+                    buffer.append(ASCII.Code.space.byte)
+                }
                 RFC_2822.Address.serialize(address, into: &buffer)
             }
         }
 
-        name("Resent-Date"); RFC_2822.Timestamp.serialize(block.timestamp, into: &buffer); crlf()
-        name("Resent-From"); mailboxes(block.from); crlf()
-        if let sender = block.sender { name("Resent-Sender"); RFC_2822.Mailbox.serialize(sender, into: &buffer); crlf() }
-        if let to = block.to { name("Resent-To"); addresses(to); crlf() }
-        if let cc = block.cc { name("Resent-Cc"); addresses(cc); crlf() }
-        if let bcc = block.bcc { name("Resent-Bcc"); addresses(bcc); crlf() }
-        if let messageID = block.messageID { name("Resent-Message-ID"); RFC_2822.Message.ID.serialize(messageID, into: &buffer); crlf() }
+        name("Resent-Date")
+        RFC_2822.Timestamp.serialize(block.timestamp, into: &buffer)
+        crlf()
+        name("Resent-From")
+        mailboxes(block.from)
+        crlf()
+        if let sender = block.sender {
+            name("Resent-Sender")
+            RFC_2822.Mailbox.serialize(sender, into: &buffer)
+            crlf()
+        }
+        if let to = block.to {
+            name("Resent-To")
+            addresses(to)
+            crlf()
+        }
+        if let cc = block.cc {
+            name("Resent-Cc")
+            addresses(cc)
+            crlf()
+        }
+        if let bcc = block.bcc {
+            name("Resent-Bcc")
+            addresses(bcc)
+            crlf()
+        }
+        if let messageID = block.messageID {
+            name("Resent-Message-ID")
+            RFC_2822.Message.ID.serialize(messageID, into: &buffer)
+            crlf()
+        }
     }
 }
 
@@ -199,7 +259,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
         let codeArray: [ASCII.Code]
         do {
-            codeArray = try Array<ASCII.Code>(bytes)
+            codeArray = try [ASCII.Code](bytes)
         } catch {
             throw Error.missingResentDate(String(decoding: bytes, as: UTF8.self))
         }
@@ -207,10 +267,14 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
         // Helper to trim whitespace from code array
         func trimWhitespace(_ arr: [ASCII.Code]) -> [ASCII.Code] {
             var result = arr
-            while !result.isEmpty && (result.first == ASCII.Code.space || result.first == ASCII.Code.htab) {
+            while !result.isEmpty
+                && (result.first == ASCII.Code.space || result.first == ASCII.Code.htab)
+            {
                 result.removeFirst()
             }
-            while !result.isEmpty && (result.last == ASCII.Code.space || result.last == ASCII.Code.htab) {
+            while !result.isEmpty
+                && (result.last == ASCII.Code.space || result.last == ASCII.Code.htab)
+            {
                 result.removeLast()
             }
             return result
@@ -269,7 +333,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
             let fieldValueCodes = trimWhitespace(Array(line[(colonIndex + 1)...]))
 
             let fieldName = String(decoding: fieldNameCodes, as: UTF8.self).lowercased()
-            let fieldValueBytes = Array<Byte>(fieldValueCodes)
+            let fieldValueBytes = [Byte](fieldValueCodes)
 
             switch fieldName {
             case "resent-date":
@@ -281,7 +345,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                 for mailboxCodes in mailboxCodeArrays {
                     let trimmed = trimWhitespace(mailboxCodes)
                     guard !trimmed.isEmpty else { continue }
-                    if let mailbox = try? RFC_2822.Mailbox(ascii: Array<Byte>(trimmed)) {
+                    if let mailbox = try? RFC_2822.Mailbox(ascii: [Byte](trimmed)) {
                         from.append(mailbox)
                     }
                 }
@@ -295,7 +359,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                 for addressCodes in addressCodeArrays {
                     let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
-                    if let address = try? RFC_2822.Address(ascii: Array<Byte>(trimmed)) {
+                    if let address = try? RFC_2822.Address(ascii: [Byte](trimmed)) {
                         addresses.append(address)
                     }
                 }
@@ -307,7 +371,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                 for addressCodes in addressCodeArrays {
                     let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
-                    if let address = try? RFC_2822.Address(ascii: Array<Byte>(trimmed)) {
+                    if let address = try? RFC_2822.Address(ascii: [Byte](trimmed)) {
                         addresses.append(address)
                     }
                 }
@@ -319,7 +383,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                 for addressCodes in addressCodeArrays {
                     let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
-                    if let address = try? RFC_2822.Address(ascii: Array<Byte>(trimmed)) {
+                    if let address = try? RFC_2822.Address(ascii: [Byte](trimmed)) {
                         addresses.append(address)
                     }
                 }

@@ -128,7 +128,7 @@ extension RFC_2822.Message {
 
         // Type-up: lift to ASCII.Code at the entry boundary for grammar parsing,
         // but keep a [Byte] copy for body/field byte-domain consumption.
-        let byteArray = Array<Byte>(bytes)
+        let byteArray = [Byte](bytes)
         let codeArray = byteArray.map { (try? ASCII.Code($0)) ?? ASCII.Code(unchecked: 0) }
 
         // Find the blank line (CRLF CRLF) that separates headers from body
@@ -139,7 +139,8 @@ extension RFC_2822.Message {
         if codeArray.count >= 4 {
             for i in 0..<(codeArray.count - 3) {
                 if codeArray[i] == ASCII.Code.cr && codeArray[i + 1] == ASCII.Code.lf
-                    && codeArray[i + 2] == ASCII.Code.cr && codeArray[i + 3] == ASCII.Code.lf {
+                    && codeArray[i + 2] == ASCII.Code.cr && codeArray[i + 3] == ASCII.Code.lf
+                {
                     headerEndIndex = i
                     bodyStartIndex = i + 4
                     break
