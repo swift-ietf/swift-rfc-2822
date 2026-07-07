@@ -76,10 +76,6 @@ extension RFC_2822.Message.Body {
     /// Error type (body parsing never fails).
     public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
         case never
-
-        public var description: String {
-            "Body parsing never fails"
-        }
     }
 
     /// Creates a body from raw wire bytes — the byte-domain parse entry.
@@ -88,6 +84,12 @@ extension RFC_2822.Message.Body {
     /// accepting the raw bytes (hence non-throwing).
     public init<Bytes: Collection>(binary bytes: Bytes) where Bytes.Element == Byte {
         self.init(__unchecked: (), bytes: Array(bytes))
+    }
+}
+
+extension RFC_2822.Message.Body.Error {
+    public var description: String {
+        "Body parsing never fails"
     }
 }
 

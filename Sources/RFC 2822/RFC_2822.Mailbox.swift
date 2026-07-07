@@ -163,7 +163,7 @@ extension RFC_2822.Mailbox: ASCII.Parseable {
         // Type-up: lift to ASCII.Code at the entry boundary so the body works
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
         let codeArray: [ASCII.Code]
-        do {
+        do throws(ASCII.Code.Error) {
             codeArray = try [ASCII.Code](bytes)
         } catch {
             throw Error.invalidFormat(String(decoding: bytes, as: UTF8.self))
@@ -213,7 +213,7 @@ extension RFC_2822.Mailbox: ASCII.Parseable {
             let addrSpecBytes = [Byte](codeArray[addrSpecStart..<closeIndex])
 
             let emailAddress: RFC_2822.AddrSpec
-            do {
+            do throws(RFC_2822.AddrSpec.Error) {
                 emailAddress = try RFC_2822.AddrSpec(ascii: addrSpecBytes)
             } catch {
                 throw Error.invalidAddrSpec(error)
@@ -227,7 +227,7 @@ extension RFC_2822.Mailbox: ASCII.Parseable {
         } else {
             // addr-spec format (no display name)
             let emailAddress: RFC_2822.AddrSpec
-            do {
+            do throws(RFC_2822.AddrSpec.Error) {
                 emailAddress = try RFC_2822.AddrSpec(ascii: bytes)
             } catch {
                 throw Error.invalidAddrSpec(error)

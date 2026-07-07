@@ -122,7 +122,7 @@ extension RFC_2822.Message.Received: ASCII.Parseable {
         // Type-up: lift to ASCII.Code at the entry boundary so the body works
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
         let codeArray: [ASCII.Code]
-        do {
+        do throws(ASCII.Code.Error) {
             codeArray = try [ASCII.Code](bytes)
         } catch {
             throw Error.missingSemicolon(String(decoding: bytes, as: UTF8.self))
@@ -153,7 +153,7 @@ extension RFC_2822.Message.Received: ASCII.Parseable {
         }
 
         let timestamp: RFC_2822.Timestamp
-        do {
+        do throws(RFC_2822.Timestamp.Error) {
             timestamp = try RFC_2822.Timestamp(ascii: [Byte](timestampCodes))
         } catch {
             throw Error.invalidTimestamp(error)

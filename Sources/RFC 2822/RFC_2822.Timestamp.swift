@@ -99,7 +99,7 @@ extension RFC_2822.Timestamp: ASCII.Parseable {
         // against ASCII.Code constants directly (RFC 2822 timestamp grammar is
         // strict ASCII).
         var codeArray: [ASCII.Code]
-        do {
+        do throws(ASCII.Code.Error) {
             codeArray = try [ASCII.Code](bytes)
         } catch {
             throw Error.invalidFormat(String(decoding: bytes, as: UTF8.self))

@@ -124,7 +124,7 @@ extension RFC_2822.Message.ID: ASCII.Parseable {
         // Type-up: lift to ASCII.Code at the entry boundary so the body works
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
         var codeArray: [ASCII.Code]
-        do {
+        do throws(ASCII.Code.Error) {
             codeArray = try [ASCII.Code](bytes)
         } catch {
             throw Error.missingAngleBrackets(String(decoding: bytes, as: UTF8.self))

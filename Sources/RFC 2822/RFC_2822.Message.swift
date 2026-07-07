@@ -70,14 +70,16 @@ extension RFC_2822.Message {
     public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
         case empty
         case invalidFields(RFC_2822.Fields.Error)
+    }
+}
 
-        public var description: String {
-            switch self {
-            case .empty:
-                return "Message cannot be empty"
-            case .invalidFields(let error):
-                return "Invalid fields: \(error)"
-            }
+extension RFC_2822.Message.Error {
+    public var description: String {
+        switch self {
+        case .empty:
+            return "Message cannot be empty"
+        case .invalidFields(let error):
+            return "Invalid fields: \(error)"
         }
     }
 }
@@ -177,7 +179,7 @@ extension RFC_2822.Message {
         }
 
         let fields: RFC_2822.Fields
-        do {
+        do throws(RFC_2822.Fields.Error) {
             fields = try RFC_2822.Fields(ascii: fieldsBytes)
         } catch {
             throw Error.invalidFields(error)

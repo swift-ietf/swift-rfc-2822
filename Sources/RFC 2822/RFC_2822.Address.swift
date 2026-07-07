@@ -35,11 +35,6 @@ extension RFC_2822 {
     /// let addr2 = try RFC_2822.Address(ascii: "Team: john@example.com, jane@example.com;".utf8)
     /// ```
     public struct Address: Sendable, Codable {
-        public enum Kind: Hashable, Sendable, Codable {
-            case mailbox(Mailbox)
-            case group(String, [Mailbox])  // Display name and members
-        }
-
         public let kind: Kind
 
         /// Creates an address WITHOUT validation
@@ -51,6 +46,15 @@ extension RFC_2822 {
         public init(_ kind: Kind) {
             self.init(__unchecked: (), kind: kind)
         }
+    }
+}
+
+// MARK: - Kind
+
+extension RFC_2822.Address {
+    public enum Kind: Hashable, Sendable, Codable {
+        case mailbox(RFC_2822.Mailbox)
+        case group(String, [RFC_2822.Mailbox])  // Display name and members
     }
 }
 
@@ -123,18 +127,20 @@ extension RFC_2822.Address {
         case invalidMailbox(RFC_2822.Mailbox.Error)
         case invalidGroup(_ value: String)
         case missingGroupTerminator(_ value: String)
+    }
+}
 
-        public var description: String {
-            switch self {
-            case .empty:
-                return "Address cannot be empty"
-            case .invalidMailbox(let error):
-                return "Invalid mailbox: \(error)"
-            case .invalidGroup(let value):
-                return "Invalid group format: '\(value)'"
-            case .missingGroupTerminator(let value):
-                return "Missing ';' terminator in group: '\(value)'"
-            }
+extension RFC_2822.Address.Error {
+    public var description: String {
+        switch self {
+        case .empty:
+            return "Address cannot be empty"
+        case .invalidMailbox(let error):
+            return "Invalid mailbox: \(error)"
+        case .invalidGroup(let value):
+            return "Invalid group format: '\(value)'"
+        case .missingGroupTerminator(let value):
+            return "Missing ';' terminator in group: '\(value)'"
         }
     }
 }
@@ -161,7 +167,7 @@ extension RFC_2822.Address: ASCII.Parseable {
         // Type-up: lift to ASCII.Code at the entry boundary so the body works
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
         let codeArray: [ASCII.Code]
-        do {
+        do throws(ASCII.Code.Error) {
             codeArray = try [ASCII.Code](bytes)
         } catch {
             throw Error.invalidGroup(String(decoding: bytes, as: UTF8.self))
@@ -257,7 +263,7 @@ extension RFC_2822.Address: ASCII.Parseable {
                             trimmed.removeLast()
                         }
                         if !trimmed.isEmpty {
-                            do {
+                            do throws(RFC_2822.Mailbox.Error) {
                                 let mailbox = try RFC_2822.Mailbox(ascii: [Byte](trimmed))
                                 mailboxes.append(mailbox)
                             } catch {
@@ -283,7 +289,7 @@ extension RFC_2822.Address: ASCII.Parseable {
                     trimmed.removeLast()
                 }
                 if !trimmed.isEmpty {
-                    do {
+                    do throws(RFC_2822.Mailbox.Error) {
                         let mailbox = try RFC_2822.Mailbox(ascii: [Byte](trimmed))
                         mailboxes.append(mailbox)
                     } catch {
@@ -295,7 +301,7 @@ extension RFC_2822.Address: ASCII.Parseable {
             self.init(__unchecked: (), kind: .group(displayName, mailboxes))
         } else {
             // This is a mailbox
-            do {
+            do throws(RFC_2822.Mailbox.Error) {
                 let mailbox = try RFC_2822.Mailbox(ascii: bytes)
                 self.init(__unchecked: (), kind: .mailbox(mailbox))
             } catch {

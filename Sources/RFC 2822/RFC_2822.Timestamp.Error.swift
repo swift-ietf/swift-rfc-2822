@@ -16,14 +16,16 @@ extension RFC_2822.Timestamp {
     public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
         case empty
         case invalidFormat(_ value: String)
+    }
+}
 
-        public var description: String {
-            switch self {
-            case .empty:
-                return "Timestamp cannot be empty"
-            case .invalidFormat(let value):
-                return "Invalid timestamp format: '\(value)'"
-            }
+extension RFC_2822.Timestamp.Error {
+    public var description: String {
+        switch self {
+        case .empty:
+            return "Timestamp cannot be empty"
+        case .invalidFormat(let value):
+            return "Invalid timestamp format: '\(value)'"
         }
     }
 }

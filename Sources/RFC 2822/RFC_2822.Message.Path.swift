@@ -113,7 +113,7 @@ extension RFC_2822.Message.Path: ASCII.Parseable {
         // Type-up: lift to ASCII.Code at the entry boundary so the body works
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
         var codeArray: [ASCII.Code]
-        do {
+        do throws(ASCII.Code.Error) {
             codeArray = try [ASCII.Code](bytes)
         } catch {
             throw Error.missingAngleBrackets(String(decoding: bytes, as: UTF8.self))
@@ -152,7 +152,7 @@ extension RFC_2822.Message.Path: ASCII.Parseable {
 
         // Parse addr-spec
         let addrSpec: RFC_2822.AddrSpec
-        do {
+        do throws(RFC_2822.AddrSpec.Error) {
             addrSpec = try RFC_2822.AddrSpec(ascii: contentBytes)
         } catch {
             throw Error.invalidAddrSpec(error)

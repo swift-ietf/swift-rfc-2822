@@ -400,22 +400,24 @@ extension RFC_2822.Fields {
         case invalidMailbox(RFC_2822.Mailbox.Error)
         case invalidAddress(RFC_2822.Address.Error)
         case invalidMessageID(RFC_2822.Message.ID.Error)
+    }
+}
 
-        public var description: String {
-            switch self {
-            case .empty:
-                return "Fields cannot be empty"
-            case .missingRequiredField(let fieldName):
-                return "Missing required field: \(fieldName)"
-            case .invalidFieldFormat(let fieldName, let value):
-                return "Invalid format for field '\(fieldName)': '\(value)'"
-            case .invalidMailbox(let error):
-                return "Invalid mailbox: \(error)"
-            case .invalidAddress(let error):
-                return "Invalid address: \(error)"
-            case .invalidMessageID(let error):
-                return "Invalid message ID: \(error)"
-            }
+extension RFC_2822.Fields.Error {
+    public var description: String {
+        switch self {
+        case .empty:
+            return "Fields cannot be empty"
+        case .missingRequiredField(let fieldName):
+            return "Missing required field: \(fieldName)"
+        case .invalidFieldFormat(let fieldName, let value):
+            return "Invalid format for field '\(fieldName)': '\(value)'"
+        case .invalidMailbox(let error):
+            return "Invalid mailbox: \(error)"
+        case .invalidAddress(let error):
+            return "Invalid address: \(error)"
+        case .invalidMessageID(let error):
+            return "Invalid message ID: \(error)"
         }
     }
 }
@@ -440,7 +442,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
         // Type-up: lift to ASCII.Code at the entry boundary so the body works
         // against ASCII.Code constants directly (RFC 2822 grammar is strict ASCII).
         let codeArray: [ASCII.Code]
-        do {
+        do throws(ASCII.Code.Error) {
             codeArray = try [ASCII.Code](bytes)
         } catch {
             throw Error.invalidFieldFormat("", String(decoding: bytes, as: UTF8.self))
@@ -573,7 +575,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
         for (nameCodes, valueCodes) in headers {
             let valueBytes = [Byte](valueCodes)
             if codesEqualCaseInsensitive(nameCodes, "date") {
-                do {
+                do throws(RFC_2822.Timestamp.Error) {
                     date = try RFC_2822.Timestamp(ascii: valueBytes)
                 } catch {
                     throw Error.invalidFieldFormat(
@@ -587,18 +589,18 @@ extension RFC_2822.Fields: ASCII.Parseable {
                 for part in parts {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
-                        do {
+                        do throws(RFC_2822.Mailbox.Error) {
                             let mailbox = try RFC_2822.Mailbox(ascii: [Byte](trimmed))
                             from.append(mailbox)
-                        } catch let error {
+                        } catch {
                             throw Error.invalidMailbox(error)
                         }
                     }
                 }
             } else if codesEqualCaseInsensitive(nameCodes, "sender") {
-                do {
+                do throws(RFC_2822.Mailbox.Error) {
                     sender = try RFC_2822.Mailbox(ascii: valueBytes)
-                } catch let error {
+                } catch {
                     throw Error.invalidMailbox(error)
                 }
             } else if codesEqualCaseInsensitive(nameCodes, "reply-to") {
@@ -607,10 +609,10 @@ extension RFC_2822.Fields: ASCII.Parseable {
                 for part in parts {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
-                        do {
+                        do throws(RFC_2822.Address.Error) {
                             let address = try RFC_2822.Address(ascii: [Byte](trimmed))
                             addresses.append(address)
-                        } catch let error {
+                        } catch {
                             throw Error.invalidAddress(error)
                         }
                     }
@@ -622,10 +624,10 @@ extension RFC_2822.Fields: ASCII.Parseable {
                 for part in parts {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
-                        do {
+                        do throws(RFC_2822.Address.Error) {
                             let address = try RFC_2822.Address(ascii: [Byte](trimmed))
                             addresses.append(address)
-                        } catch let error {
+                        } catch {
                             throw Error.invalidAddress(error)
                         }
                     }
@@ -637,10 +639,10 @@ extension RFC_2822.Fields: ASCII.Parseable {
                 for part in parts {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
-                        do {
+                        do throws(RFC_2822.Address.Error) {
                             let address = try RFC_2822.Address(ascii: [Byte](trimmed))
                             addresses.append(address)
-                        } catch let error {
+                        } catch {
                             throw Error.invalidAddress(error)
                         }
                     }
@@ -652,19 +654,19 @@ extension RFC_2822.Fields: ASCII.Parseable {
                 for part in parts {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
-                        do {
+                        do throws(RFC_2822.Address.Error) {
                             let address = try RFC_2822.Address(ascii: [Byte](trimmed))
                             addresses.append(address)
-                        } catch let error {
+                        } catch {
                             throw Error.invalidAddress(error)
                         }
                     }
                 }
                 bcc = addresses.isEmpty ? nil : addresses
             } else if codesEqualCaseInsensitive(nameCodes, "message-id") {
-                do {
+                do throws(RFC_2822.Message.ID.Error) {
                     messageID = try RFC_2822.Message.ID(ascii: valueBytes)
-                } catch let error {
+                } catch {
                     throw Error.invalidMessageID(error)
                 }
             } else if codesEqualCaseInsensitive(nameCodes, "in-reply-to") {
@@ -674,10 +676,10 @@ extension RFC_2822.Fields: ASCII.Parseable {
                 for part in parts {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty && trimmed.first == ASCII.Code.lessThanSign {
-                        do {
+                        do throws(RFC_2822.Message.ID.Error) {
                             let id = try RFC_2822.Message.ID(ascii: [Byte](trimmed))
                             ids.append(id)
-                        } catch let error {
+                        } catch {
                             throw Error.invalidMessageID(error)
                         }
                     }
@@ -689,10 +691,10 @@ extension RFC_2822.Fields: ASCII.Parseable {
                 for part in parts {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty && trimmed.first == ASCII.Code.lessThanSign {
-                        do {
+                        do throws(RFC_2822.Message.ID.Error) {
                             let id = try RFC_2822.Message.ID(ascii: [Byte](trimmed))
                             ids.append(id)
-                        } catch let error {
+                        } catch {
                             throw Error.invalidMessageID(error)
                         }
                     }

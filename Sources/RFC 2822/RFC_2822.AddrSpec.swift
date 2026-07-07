@@ -66,7 +66,7 @@ extension RFC_2822 {
                 throw Error.invalidLocalPart("")
             }
             let localCodes: [ASCII.Code]
-            do {
+            do throws(ASCII.Code.Error) {
                 localCodes = try [ASCII.Code](localPart.utf8)
             } catch {
                 throw Error.invalidLocalPart(localPart)
@@ -78,7 +78,7 @@ extension RFC_2822 {
                 throw Error.invalidDomain("")
             }
             let domainCodes: [ASCII.Code]
-            do {
+            do throws(ASCII.Code.Error) {
                 domainCodes = try [ASCII.Code](domain.utf8)
             } catch {
                 throw Error.invalidDomain(domain)
