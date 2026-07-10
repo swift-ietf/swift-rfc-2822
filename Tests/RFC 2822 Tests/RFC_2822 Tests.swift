@@ -172,7 +172,8 @@ extension RFC_2822.Mailbox {
 
         @Test
         func `Successfully creates mailbox with quoted display name`() throws {
-            let mailbox = try RFC_2822.Mailbox(ascii: Array("\"John Q. Doe\" <john@example.com>".utf8))
+            let mailbox = try RFC_2822.Mailbox(
+                ascii: Array("\"John Q. Doe\" <john@example.com>".utf8))
             #expect(mailbox.displayName == "John Q. Doe")
         }
 
