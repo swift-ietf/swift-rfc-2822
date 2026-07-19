@@ -58,8 +58,43 @@ extension RFC_2822 {
         /// - Parameters:
         ///   - displayName: Optional display name (e.g., "John Doe")
         ///   - emailAddress: The email address
-        public init(displayName: String? = nil, emailAddress: AddrSpec) {
+        /// - Throws: `Error.invalidDisplayName` if `displayName` contains a
+        ///   CR, LF, other control byte, or non-ASCII byte — see
+        ///   `validateDisplayName(_:)`.
+        public init(displayName: String? = nil, emailAddress: AddrSpec) throws(Error) {
+            if let displayName { try Self.validateDisplayName(displayName) }
             self.init(__unchecked: (), displayName: displayName, emailAddress: emailAddress)
+        }
+    }
+}
+
+// MARK: - Display Name Validation (header-injection guard)
+
+extension RFC_2822.Mailbox {
+    /// Validates a display-name candidate against header injection.
+    ///
+    /// Rejects every C0 control byte (0x00-0x1F) and DEL (0x7F) — CR (0x0D)
+    /// and LF (0x0A) are the injection vector itself (a literal CR/LF in a
+    /// header field body breaks out of the field and lets attacker-
+    /// controlled input forge additional header lines or a spurious
+    /// body-separator blank line); the other C0 controls have no legitimate
+    /// place in an unstructured display-name value either. Also rejects
+    /// non-ASCII bytes: RFC 2822 header text is 7-bit US-ASCII, and
+    /// MIME-encoding a non-ASCII display name (RFC 2047) is out of this
+    /// package's scope, so it is rejected rather than silently mis-encoded.
+    ///
+    /// Applied at every construction path — the validated public
+    /// initializer AND the `ASCII.Parseable` wire-text parser — so the
+    /// invariant holds by construction and the (non-throwing, per the
+    /// `ASCII.Serializable`/`Binary.Serializable` protocol shape)
+    /// serializers never have to reject at write time.
+    static func validateDisplayName(_ displayName: String) throws(Error) {
+        for scalar in displayName.unicodeScalars {
+            guard scalar.isASCII else { throw Error.invalidDisplayName(displayName) }
+            let value = scalar.value
+            guard value >= 0x20 && value != 0x7F else {
+                throw Error.invalidDisplayName(displayName)
+            }
         }
     }
 }
@@ -83,7 +118,18 @@ extension RFC_2822.Mailbox: ASCII.Serializable, Binary.Serializable {
             }
             if needsQuoting {
                 buffer.append(ASCII.Code.quotationMark)
-                for byte in displayName.utf8 { buffer.append(ASCII.Code(byte)) }
+                for byte in displayName.utf8 {
+                    let code = ASCII.Code(byte)
+                    // quoted-pair escape: '"' and '\' must not appear bare
+                    // inside a quoted-string (RFC 2822 §3.2.5 qtext excludes
+                    // both; an un-escaped '"' would terminate the
+                    // quoted-string early and an un-escaped '\' would make
+                    // the following byte an unintended quoted-pair).
+                    if code == ASCII.Code.quotationMark || code == ASCII.Code.reverseSolidus {
+                        buffer.append(ASCII.Code.reverseSolidus)
+                    }
+                    buffer.append(code)
+                }
                 buffer.append(ASCII.Code.quotationMark)
             } else {
                 for byte in displayName.utf8 { buffer.append(ASCII.Code(byte)) }
@@ -114,7 +160,15 @@ extension RFC_2822.Mailbox: ASCII.Serializable, Binary.Serializable {
             }
             if needsQuoting {
                 buffer.append(ASCII.Code.quotationMark.byte)
-                for byte in displayName.utf8 { buffer.append(Byte(byte)) }
+                for byte in displayName.utf8 {
+                    let code = ASCII.Code(byte)
+                    // quoted-pair escape — see the ASCII-verb body above for
+                    // the rationale; byte-equivalent independent body.
+                    if code == ASCII.Code.quotationMark || code == ASCII.Code.reverseSolidus {
+                        buffer.append(ASCII.Code.reverseSolidus.byte)
+                    }
+                    buffer.append(Byte(byte))
+                }
                 buffer.append(ASCII.Code.quotationMark.byte)
             } else {
                 for byte in displayName.utf8 { buffer.append(Byte(byte)) }
@@ -219,9 +273,19 @@ extension RFC_2822.Mailbox: ASCII.Parseable {
                 throw Error.invalidAddrSpec(error)
             }
 
+            // Reject header injection (CR/LF/control bytes) or non-ASCII in
+            // a wire-parsed display name too — the invariant is enforced at
+            // EVERY construction path, not only the public initializer, so
+            // a parse -> re-serialize round trip cannot replay attacker-
+            // controlled bytes into a forged header line.
+            let validatedDisplayName = displayName.isEmpty ? nil : displayName
+            if let validatedDisplayName {
+                try Self.validateDisplayName(validatedDisplayName)
+            }
+
             self.init(
                 __unchecked: (),
-                displayName: displayName.isEmpty ? nil : displayName,
+                displayName: validatedDisplayName,
                 emailAddress: emailAddress
             )
         } else {
@@ -263,7 +327,15 @@ extension RFC_2822.Mailbox: CustomStringConvertible {
             let code = ASCII.Code(byte)
             return !code.isLetter && !code.isDigit && code != ASCII.Code.space
         }
-        let name = needsQuoting ? "\"\(displayName)\"" : displayName
-        return "\(name) <\(emailAddress)>"
+        guard needsQuoting else { return "\(displayName) <\(emailAddress)>" }
+        // quoted-pair escape '"' and '\' — matches the ASCII/Binary
+        // serialize verbs above.
+        var escaped = ""
+        escaped.reserveCapacity(displayName.count)
+        for character in displayName {
+            if character == "\"" || character == "\\" { escaped.append("\\") }
+            escaped.append(character)
+        }
+        return "\"\(escaped)\" <\(emailAddress)>"
     }
 }

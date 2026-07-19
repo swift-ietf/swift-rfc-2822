@@ -27,6 +27,10 @@ extension RFC_2822.Mailbox {
 
         /// Invalid addr-spec within the mailbox
         case invalidAddrSpec(RFC_2822.AddrSpec.Error)
+
+        /// Display name contains a CR/LF (or other control byte) — the
+        /// header-injection vector — or a non-ASCII byte.
+        case invalidDisplayName(_ value: String)
     }
 }
 
@@ -43,6 +47,8 @@ extension RFC_2822.Mailbox.Error: CustomStringConvertible {
             return "Missing closing '>' in '\(value)'"
         case .invalidAddrSpec(let error):
             return "Invalid address: \(error)"
+        case .invalidDisplayName(let value):
+            return "Invalid display name (control byte or non-ASCII): '\(value)'"
         }
     }
 }
