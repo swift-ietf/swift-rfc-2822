@@ -226,6 +226,81 @@ extension RFC_2822.Mailbox {
     }
 }
 
+extension RFC_2822.Mailbox.Test {
+    /// F-002 regression coverage: display-name construction and parsing
+    /// reject header injection (an embedded CR/LF that would let
+    /// attacker-controlled input forge additional header lines), and the
+    /// serializer quoted-pair escapes embedded `"` / `\` rather than
+    /// emitting them bare inside the quoted-string.
+    @Suite
+    struct `Edge Case` {
+        @Test
+        func `Rejects a display name carrying a CRLF header-injection payload`() throws {
+            #expect(throws: RFC_2822.Mailbox.Error.self) {
+                _ = try RFC_2822.Mailbox(
+                    displayName: "Evil\r\nBcc: attacker@evil.example",
+                    emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: "example.com")
+                )
+            }
+        }
+
+        @Test
+        func `Rejects a display name carrying a bare LF`() throws {
+            #expect(throws: RFC_2822.Mailbox.Error.self) {
+                _ = try RFC_2822.Mailbox(
+                    displayName: "Evil\nHeader: injected",
+                    emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: "example.com")
+                )
+            }
+        }
+
+        @Test
+        func `Rejects a display name carrying a bare CR`() throws {
+            #expect(throws: RFC_2822.Mailbox.Error.self) {
+                _ = try RFC_2822.Mailbox(
+                    displayName: "Evil\rHeader: injected",
+                    emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: "example.com")
+                )
+            }
+        }
+
+        @Test
+        func `Rejects a header-injection payload parsed from wire text too`() throws {
+            // The same invariant holds on the ASCII.Parseable path, not just
+            // the public initializer — a parse -> re-serialize round trip
+            // must not be able to replay attacker-controlled bytes.
+            let malicious = "Evil\r\nBcc: attacker@evil.example <john@example.com>"
+            #expect(throws: RFC_2822.Mailbox.Error.self) {
+                _ = try RFC_2822.Mailbox(ascii: Array(malicious.utf8))
+            }
+        }
+
+        @Test
+        func `Escapes embedded quote and backslash bytes when serializing a display name`() throws {
+            let mailbox = try RFC_2822.Mailbox(
+                displayName: "Say \"hi\" \\ folks",
+                emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: "example.com")
+            )
+            #expect(
+                String(mailbox)
+                    == "\"Say \\\"hi\\\" \\\\ folks\" <user@example.com>"
+            )
+        }
+
+        @Test
+        func `A display name with embedded quotes still parses back after escaped serialization`() throws {
+            let original = try RFC_2822.Mailbox(
+                displayName: "Say \"hi\" \\ folks",
+                emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: "example.com")
+            )
+            var ascii: [ASCII.Code] = []
+            RFC_2822.Mailbox.serialize(original, into: &ascii)
+            let reparsed = try RFC_2822.Mailbox(ascii: ascii.map(\.byte))
+            #expect(reparsed.emailAddress == original.emailAddress)
+        }
+    }
+}
+
 // MARK: - Address Tests
 
 extension RFC_2822.Address {
@@ -293,6 +368,40 @@ extension RFC_2822.Address {
             let encoded = try JSONEncoder().encode(original)
             let decoded = try JSONDecoder().decode(RFC_2822.Address.self, from: encoded)
             #expect(original == decoded)
+        }
+    }
+}
+
+extension RFC_2822.Address.Test {
+    /// F-005 regression coverage: the group-vs-mailbox `":"` scan is
+    /// quote-aware, so a colon embedded in a quoted display name is not
+    /// mistaken for the `display-name ":" mailbox-list ";"` group separator.
+    @Suite
+    struct `Edge Case` {
+        @Test
+        func `Parses a bare mailbox whose quoted display name contains a colon`() throws {
+            let address = try RFC_2822.Address(
+                ascii: Array("\"Time: 5pm\" <john@example.com>".utf8)
+            )
+            guard case .mailbox(let mailbox) = address.kind else {
+                Issue.record("Expected a mailbox address, got a group")
+                return
+            }
+            #expect(mailbox.displayName == "Time: 5pm")
+            #expect(mailbox.emailAddress.localPart == "john")
+        }
+
+        @Test
+        func `Still parses a real group when the display name has no colon`() throws {
+            let address = try RFC_2822.Address(
+                ascii: Array("Team: john@example.com, jane@example.com;".utf8)
+            )
+            guard case .group(let name, let mailboxes) = address.kind else {
+                Issue.record("Expected a group address, got a mailbox")
+                return
+            }
+            #expect(name == "Team")
+            #expect(mailboxes.count == 2)
         }
     }
 }
@@ -465,13 +574,17 @@ extension RFC_2822.Timestamp {
 
         @Test
         func `Successfully parses timestamp from bytes`() throws {
-            let timestamp = try RFC_2822.Timestamp(ascii: Array("1234567890".utf8))
+            let timestamp = try RFC_2822.Timestamp(
+                ascii: Array("Fri, 13 Feb 2009 23:31:30 +0000".utf8)
+            )
             #expect(timestamp.secondsSinceEpoch == 1234567890.0)
         }
 
         @Test
         func `Successfully parses timestamp with whitespace`() throws {
-            let timestamp = try RFC_2822.Timestamp(ascii: Array("  1234567890  ".utf8))
+            let timestamp = try RFC_2822.Timestamp(
+                ascii: Array("  Fri, 13 Feb 2009 23:31:30 +0000  ".utf8)
+            )
             #expect(timestamp.secondsSinceEpoch == 1234567890.0)
         }
 
@@ -499,6 +612,78 @@ extension RFC_2822.Timestamp {
     }
 }
 
+extension RFC_2822.Timestamp.Test {
+    /// F-001 regression coverage: the wire form is the full RFC 2822
+    /// Section 3.3 `date-time` grammar (day-of-week, date, time-of-day,
+    /// zone) — not a bare numeric epoch — with `obs-zone` leniency and
+    /// `obs-year` century normalization on parse.
+    @Suite
+    struct `Edge Case` {
+        @Test
+        func `Parses the RFC 2822 example date-time and recovers the correct epoch and fields`()
+            throws
+        {
+            let timestamp = try RFC_2822.Timestamp(
+                ascii: Array("Fri, 21 Nov 1997 09:55:06 -0600".utf8)
+            )
+            #expect(timestamp.secondsSinceEpoch == 880127706.0)
+            #expect(timestamp.dayOfWeek == .friday)
+            #expect(timestamp.day == 21)
+            #expect(timestamp.month == .november)
+            #expect(timestamp.year == 1997)
+            #expect(timestamp.hour == 9)
+            #expect(timestamp.minute == 55)
+            #expect(timestamp.second == 6)
+            #expect(timestamp.zone == .offset(minutes: -360))
+        }
+
+        @Test
+        func `Round-trips a generated timestamp through serialize and parse`() throws {
+            let original = RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890)
+            var ascii: [ASCII.Code] = []
+            RFC_2822.Timestamp.serialize(original, into: &ascii)
+            #expect(
+                String(decoding: ascii.map(\.byte), as: UTF8.self)
+                    == "Fri, 13 Feb 2009 23:31:30 +0000"
+            )
+            let reparsed = try RFC_2822.Timestamp(ascii: ascii.map(\.byte))
+            #expect(reparsed.secondsSinceEpoch == original.secondsSinceEpoch)
+        }
+
+        @Test
+        func `Applies obs-year two-digit century normalization`() throws {
+            let timestamp = try RFC_2822.Timestamp(ascii: Array("21 Nov 97 09:55:06 GMT".utf8))
+            #expect(timestamp.year == 1997)
+            #expect(timestamp.secondsSinceEpoch == 880106106.0)
+        }
+
+        @Test
+        func `Treats an unrecognized single-letter obs-zone as unknown, equivalent to -0000`()
+            throws
+        {
+            let timestamp = try RFC_2822.Timestamp(ascii: Array("21 Nov 1997 09:55:06 Z".utf8))
+            #expect(timestamp.zone == .unknown)
+        }
+
+        @Test
+        func `Treats -0000 as unknown but +0000 as a known UTC offset`() throws {
+            let unknown = try RFC_2822.Timestamp(ascii: Array("21 Nov 1997 09:55:06 -0000".utf8))
+            let known = try RFC_2822.Timestamp(ascii: Array("21 Nov 1997 09:55:06 +0000".utf8))
+            #expect(unknown.zone == .unknown)
+            #expect(known.zone == .offset(minutes: 0))
+            // Both denote the same instant regardless of the zone-knowledge distinction.
+            #expect(unknown.secondsSinceEpoch == known.secondsSinceEpoch)
+        }
+
+        @Test
+        func `Rejects a bare numeric epoch string (the pre-fix wire form)`() throws {
+            #expect(throws: RFC_2822.Timestamp.Error.self) {
+                _ = try RFC_2822.Timestamp(ascii: Array("1234567890".utf8))
+            }
+        }
+    }
+}
+
 // MARK: - Fields Tests
 
 extension RFC_2822.Fields {
@@ -509,7 +694,7 @@ extension RFC_2822.Fields {
             let fields = RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
                 from: [
-                    RFC_2822.Mailbox(
+                    try RFC_2822.Mailbox(
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "sender",
@@ -527,7 +712,7 @@ extension RFC_2822.Fields {
             let fields = RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
                 from: [
-                    RFC_2822.Mailbox(
+                    try RFC_2822.Mailbox(
                         displayName: "Sender",
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "sender",
@@ -544,10 +729,12 @@ extension RFC_2822.Fields {
 
         @Test
         func `Successfully parses fields from bytes`() throws {
-            let raw = "Date: 1234567890\r\nFrom: sender@example.com\r\nSubject: Test"
+            let raw =
+                "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: sender@example.com\r\nSubject: Test"
             let fields = try RFC_2822.Fields(ascii: Array(raw.utf8))
             #expect(fields.subject == "Test")
             #expect(fields.from.count == 1)
+            #expect(fields.originationDate.secondsSinceEpoch == 1234567890.0)
         }
 
         @Test
@@ -567,7 +754,7 @@ extension RFC_2822.Fields {
 
         @Test
         func `Fails with missing From field`() throws {
-            let raw = "Date: 1234567890\r\n"
+            let raw = "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\n"
             #expect(throws: RFC_2822.Fields.Error.self) {
                 _ = try RFC_2822.Fields(ascii: Array(raw.utf8))
             }
@@ -578,7 +765,7 @@ extension RFC_2822.Fields {
             let f1 = RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1000),
                 from: [
-                    RFC_2822.Mailbox(
+                    try RFC_2822.Mailbox(
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "a",
@@ -590,7 +777,7 @@ extension RFC_2822.Fields {
             let f2 = RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1000),
                 from: [
-                    RFC_2822.Mailbox(
+                    try RFC_2822.Mailbox(
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "a",
@@ -607,7 +794,7 @@ extension RFC_2822.Fields {
             let original = RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
                 from: [
-                    RFC_2822.Mailbox(
+                    try RFC_2822.Mailbox(
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "test",
@@ -624,6 +811,36 @@ extension RFC_2822.Fields {
     }
 }
 
+extension RFC_2822.Fields.Test {
+    /// F-005 regression coverage: comma-splitting a `From`/`To`/`Cc`/`Bcc`
+    /// mailbox-address list is quote- and angle-addr-aware, so a comma
+    /// embedded in a quoted display name does not fracture one mailbox into
+    /// two bogus fragments.
+    @Suite
+    struct `Edge Case` {
+        @Test
+        func `Parses a single From mailbox whose quoted display name contains a comma`() throws {
+            let raw =
+                "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: \"Doe, John\" <john@example.com>\r\n"
+            let fields = try RFC_2822.Fields(ascii: Array(raw.utf8))
+            #expect(fields.from.count == 1)
+            #expect(fields.from.first?.displayName == "Doe, John")
+            #expect(fields.from.first?.emailAddress.localPart == "john")
+        }
+
+        @Test
+        func `Parses a To list with two comma-bearing quoted display names as two mailboxes`()
+            throws
+        {
+            let raw =
+                "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: sender@example.com\r\n"
+                + "To: \"Doe, John\" <john@example.com>, \"Roe, Jane\" <jane@example.com>\r\n"
+            let fields = try RFC_2822.Fields(ascii: Array(raw.utf8))
+            #expect(fields.to?.count == 2)
+        }
+    }
+}
+
 // MARK: - Message Tests
 
 extension RFC_2822.Message {
@@ -634,7 +851,7 @@ extension RFC_2822.Message {
             let fields = RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
                 from: [
-                    RFC_2822.Mailbox(
+                    try RFC_2822.Mailbox(
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "sender",
@@ -652,7 +869,7 @@ extension RFC_2822.Message {
             let fields = RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
                 from: [
-                    RFC_2822.Mailbox(
+                    try RFC_2822.Mailbox(
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "sender",
@@ -668,7 +885,7 @@ extension RFC_2822.Message {
         @Test
         func `Successfully parses message from bytes`() throws {
             let raw =
-                "Date: 1234567890\r\nFrom: sender@example.com\r\nSubject: Test\r\n\r\nThis is the body."
+                "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: sender@example.com\r\nSubject: Test\r\n\r\nThis is the body."
             let message = try RFC_2822.Message(binary: Array(raw.utf8))
             #expect(message.fields.subject == "Test")
             #expect(message.body != nil)
@@ -676,7 +893,7 @@ extension RFC_2822.Message {
 
         @Test
         func `Successfully parses message without body`() throws {
-            let raw = "Date: 1234567890\r\nFrom: sender@example.com"
+            let raw = "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: sender@example.com"
             let message = try RFC_2822.Message(binary: Array(raw.utf8))
             #expect(message.body == nil)
         }
@@ -693,7 +910,7 @@ extension RFC_2822.Message {
             let fields = RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1000),
                 from: [
-                    RFC_2822.Mailbox(
+                    try RFC_2822.Mailbox(
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "a",
@@ -712,7 +929,7 @@ extension RFC_2822.Message {
             let fields = RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
                 from: [
-                    RFC_2822.Mailbox(
+                    try RFC_2822.Mailbox(
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "test",
@@ -804,7 +1021,7 @@ struct ASCIIBinaryEquivalenceTests {
     }
     private func mailbox() throws -> RFC_2822.Mailbox {
         // Display name with a comma forces the quoting (escape) path.
-        RFC_2822.Mailbox(displayName: "Doe, John", emailAddress: try addrSpec())
+        try RFC_2822.Mailbox(displayName: "Doe, John", emailAddress: try addrSpec())
     }
 
     @Test func `AddrSpec verbs agree`() throws {
