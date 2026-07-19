@@ -476,12 +476,29 @@ extension RFC_2822.Fields: ASCII.Parseable {
             return true
         }
 
-        // Helper: split codes by separator (simple, not considering quotes)
+        // Helper: split codes by separator, treating a `"..."` quoted-string
+        // span or a `<...>` angle-addr span as opaque — a separator byte
+        // inside either span is NOT a structural split point. Fixes F-005:
+        // a naive byte-blind split broke `"Doe, John" <j@d.com>` (the comma
+        // inside the quoted display name) into two bogus mailbox fragments.
+        // Mirrors the quote/bracket-aware group-member split `Address`'s own
+        // parser already uses.
         func splitCodes(_ codes: [ASCII.Code], separator: ASCII.Code) -> [[ASCII.Code]] {
             var result: [[ASCII.Code]] = []
             var current: [ASCII.Code] = []
+            var inQuote = false
+            var inBracket = false
             for code in codes {
-                if code == separator {
+                if code == ASCII.Code.quotationMark && !inBracket {
+                    inQuote.toggle()
+                    current.append(code)
+                } else if code == ASCII.Code.lessThanSign && !inQuote {
+                    inBracket = true
+                    current.append(code)
+                } else if code == ASCII.Code.greaterThanSign && !inQuote {
+                    inBracket = false
+                    current.append(code)
+                } else if code == separator && !inQuote && !inBracket {
                     result.append(current)
                     current = []
                 } else {

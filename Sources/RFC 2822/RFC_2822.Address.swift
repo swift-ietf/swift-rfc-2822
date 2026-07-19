@@ -173,19 +173,25 @@ extension RFC_2822.Address: ASCII.Parseable {
             throw Error.invalidGroup(String(decoding: bytes, as: UTF8.self))
         }
 
-        // Check if this is a group (contains : but not within angle brackets)
+        // Check if this is a group (contains : but not within angle brackets
+        // or a quoted-string — F-005: a colon inside a quoted display name,
+        // e.g. `"Time: 5pm" <j@d.com>`, is NOT the group separator; a scan
+        // that only tracked angle brackets mistook it for one).
         var inAngleBracket = false
+        var inQuote = false
         var colonIndex: Int?
         var semicolonIndex: Int?
 
         for (index, code) in codeArray.enumerated() {
-            if code == ASCII.Code.lessThanSign {
+            if code == ASCII.Code.quotationMark && !inAngleBracket {
+                inQuote.toggle()
+            } else if code == ASCII.Code.lessThanSign && !inQuote {
                 inAngleBracket = true
-            } else if code == ASCII.Code.greaterThanSign {
+            } else if code == ASCII.Code.greaterThanSign && !inQuote {
                 inAngleBracket = false
-            } else if code == ASCII.Code.colon && !inAngleBracket && colonIndex == nil {
+            } else if code == ASCII.Code.colon && !inAngleBracket && !inQuote && colonIndex == nil {
                 colonIndex = index
-            } else if code == ASCII.Code.semicolon && colonIndex != nil {
+            } else if code == ASCII.Code.semicolon && colonIndex != nil && !inQuote {
                 semicolonIndex = index
                 break
             }

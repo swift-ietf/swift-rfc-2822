@@ -280,12 +280,26 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
             return result
         }
 
-        // Helper to split codes on separator
+        // Helper to split codes on separator, treating a `"..."`
+        // quoted-string span or a `<...>` angle-addr span as opaque — F-005:
+        // a separator byte inside either span is NOT a structural split
+        // point (`"Doe, John" <j@d.com>` in Resent-From/-To/-Cc/-Bcc lists).
         func splitCodes(_ arr: [ASCII.Code], on separator: ASCII.Code) -> [[ASCII.Code]] {
             var result: [[ASCII.Code]] = []
             var current: [ASCII.Code] = []
+            var inQuote = false
+            var inBracket = false
             for code in arr {
-                if code == separator {
+                if code == ASCII.Code.quotationMark && !inBracket {
+                    inQuote.toggle()
+                    current.append(code)
+                } else if code == ASCII.Code.lessThanSign && !inQuote {
+                    inBracket = true
+                    current.append(code)
+                } else if code == ASCII.Code.greaterThanSign && !inQuote {
+                    inBracket = false
+                    current.append(code)
+                } else if code == separator && !inQuote && !inBracket {
                     if !current.isEmpty {
                         result.append(current)
                     }
