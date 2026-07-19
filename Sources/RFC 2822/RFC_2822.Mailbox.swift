@@ -97,6 +97,40 @@ extension RFC_2822.Mailbox {
             }
         }
     }
+
+    /// Belt-and-suspenders emit-time guard (defense in depth, second layer
+    /// behind construction-time validation): every construction path — the
+    /// validated public initializer and the `ASCII.Parseable` wire-text
+    /// parser — routes `displayName` through `validateDisplayName(_:)`
+    /// before it can be stored, so a CR/LF byte reaching
+    /// `serialize`/`description` means an invariant was violated upstream
+    /// (e.g. via the package-internal `__unchecked:` init).
+    /// `ASCII.Serializable`/`Binary.Serializable` require a non-throwing
+    /// `serialize(_:into:)`, so "reject" here means crash loudly rather than
+    /// silently emit a forged header line onto the wire — `precondition`
+    /// (not `assert`) so the guard stays live in release builds too.
+    ///
+    /// `Mailbox` does NOT need a hand-written `Decodable` conformance: it
+    /// also conforms to `Swift.RawRepresentable` (`RawValue == String`,
+    /// below), and for a type conforming to both `RawRepresentable` and
+    /// `Codable`, the Swift standard library's conditional
+    /// `RawRepresentable`-based `Encodable`/`Decodable` witness (encode/
+    /// decode via the raw string) takes priority over compiler-synthesized
+    /// per-property `Codable` — CONFIRMED empirically
+    /// (`JSONEncoder().encode(mailbox)` produces `"John <john@example.com>"`,
+    /// not `{"displayName":...,"emailAddress":...}`). Decoding therefore
+    /// already goes through `init?(rawValue:)` -> `self.init(ascii:)`, the
+    /// SAME wire-text parser validated above — there never was a reachable
+    /// dictionary-shaped synthesized-decode path to close for this type. See
+    /// the F-002 revision-1 report for the adversarial-review claim this
+    /// corrects and the probe that disproved it.
+    fileprivate static func preconditionInjectionSafe(_ displayName: String) {
+        precondition(
+            !displayName.utf8.contains(where: { $0 == 0x0D || $0 == 0x0A }),
+            "RFC_2822.Mailbox: displayName contains CR/LF at serialize time — "
+                + "construction-time validation was bypassed"
+        )
+    }
 }
 
 // MARK: - ASCII.Serializable / Binary.Serializable ([FAM-012] format siblings)
@@ -112,6 +146,7 @@ extension RFC_2822.Mailbox: ASCII.Serializable, Binary.Serializable {
         into buffer: inout Buffer
     ) where Buffer.Element == ASCII.Code {
         if let displayName = mailbox.displayName {
+            preconditionInjectionSafe(displayName)
             let needsQuoting = displayName.utf8.contains { byte in
                 let code = ASCII.Code(byte)
                 return !code.isLetter && !code.isDigit && code != ASCII.Code.space
@@ -154,6 +189,7 @@ extension RFC_2822.Mailbox: ASCII.Serializable, Binary.Serializable {
         into buffer: inout Buffer
     ) where Buffer.Element == Byte {
         if let displayName = mailbox.displayName {
+            preconditionInjectionSafe(displayName)
             let needsQuoting = displayName.utf8.contains { byte in
                 let code = ASCII.Code(byte)
                 return !code.isLetter && !code.isDigit && code != ASCII.Code.space
@@ -323,6 +359,7 @@ extension RFC_2822.Mailbox: CustomStringConvertible {
     /// emit.
     public var description: String {
         guard let displayName else { return emailAddress.description }
+        Self.preconditionInjectionSafe(displayName)
         let needsQuoting = displayName.utf8.contains { byte in
             let code = ASCII.Code(byte)
             return !code.isLetter && !code.isDigit && code != ASCII.Code.space

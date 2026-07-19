@@ -90,6 +90,38 @@ extension RFC_2822 {
     }
 }
 
+// MARK: - Emit-time injection guard (defense in depth)
+
+extension RFC_2822.AddrSpec {
+    /// Belt-and-suspenders emit-time guard (defense in depth): every
+    /// construction path validates `localPart`/`domain` against the RFC
+    /// 2822 grammar (which excludes CR/LF — NO-WS-CTL is `%d1-8 / %d11 /
+    /// %d12 / %d14-31 / %d127`, deliberately skipping CR `%d13` and LF
+    /// `%d10`), so a CR/LF byte reaching `serialize`/`description` means an
+    /// invariant was violated upstream. `precondition` (not `assert`) so the
+    /// guard stays live in release builds too.
+    ///
+    /// `AddrSpec` does NOT need a hand-written `Decodable` conformance: like
+    /// `Mailbox`, it also conforms to `Swift.RawRepresentable` (`RawValue ==
+    /// String`, below), and the Swift standard library's conditional
+    /// `RawRepresentable`-based `Codable` witness (encode/decode via the raw
+    /// string) takes priority over compiler-synthesized per-property
+    /// `Codable` — CONFIRMED empirically (`JSONEncoder().encode(addrSpec)`
+    /// produces `"user@example.com"`, not `{"localPart":...,"domain":...}`).
+    /// Decoding therefore already goes through `init?(rawValue:)` ->
+    /// `self.init(ascii:)` -> the fully-validating `init(localPart:domain:)`
+    /// — there never was a reachable dictionary-shaped synthesized-decode
+    /// path to close for this type.
+    fileprivate static func preconditionInjectionSafe(localPart: String, domain: String) {
+        precondition(
+            !localPart.utf8.contains(where: { $0 == 0x0D || $0 == 0x0A })
+                && !domain.utf8.contains(where: { $0 == 0x0D || $0 == 0x0A }),
+            "RFC_2822.AddrSpec: localPart/domain contains CR/LF at serialize time — "
+                + "construction-time validation was bypassed"
+        )
+    }
+}
+
 // MARK: - Hashable
 
 extension RFC_2822.AddrSpec: Hashable {
@@ -114,6 +146,7 @@ extension RFC_2822.AddrSpec: ASCII.Serializable, Binary.Serializable {
         _ addrSpec: RFC_2822.AddrSpec,
         into buffer: inout Buffer
     ) where Buffer.Element == ASCII.Code {
+        preconditionInjectionSafe(localPart: addrSpec.localPart, domain: addrSpec.domain)
         buffer.reserveCapacity(
             buffer.count + addrSpec.localPart.utf8.count + 1 + addrSpec.domain.utf8.count)
         for byte in addrSpec.localPart.utf8 { buffer.append(ASCII.Code(byte)) }
@@ -132,6 +165,7 @@ extension RFC_2822.AddrSpec: ASCII.Serializable, Binary.Serializable {
         _ addrSpec: RFC_2822.AddrSpec,
         into buffer: inout Buffer
     ) where Buffer.Element == Byte {
+        preconditionInjectionSafe(localPart: addrSpec.localPart, domain: addrSpec.domain)
         buffer.reserveCapacity(
             buffer.count + addrSpec.localPart.utf8.count + 1 + addrSpec.domain.utf8.count)
         for byte in addrSpec.localPart.utf8 { buffer.append(Byte(byte)) }
@@ -422,6 +456,7 @@ extension RFC_2822.AddrSpec: CustomStringConvertible {
     /// The addr-spec in `local-part@domain` form — the same grammar the
     /// `ASCII.Serializable` / `Binary.Serializable` verbs emit.
     public var description: String {
-        "\(localPart)@\(domain)"
+        Self.preconditionInjectionSafe(localPart: localPart, domain: domain)
+        return "\(localPart)@\(domain)"
     }
 }

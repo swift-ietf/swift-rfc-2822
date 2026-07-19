@@ -150,6 +150,67 @@ extension RFC_2822.AddrSpec {
     }
 }
 
+extension RFC_2822.AddrSpec.Test {
+    /// F-002 residual-bypass audit (revision 1): investigated whether
+    /// `AddrSpec`'s Codable decode could bypass `validateLocalPart`/
+    /// `validateDomain` the way the adversarial pre-review described for
+    /// `Mailbox` (a compiler-synthesized, dictionary-shaped `init(from:)`
+    /// assigning stored properties straight from untrusted JSON). It
+    /// cannot: `AddrSpec` also conforms to `Swift.RawRepresentable`
+    /// (`RawValue == String`), so its `Codable` conformance resolves to the
+    /// Swift standard library's raw-value-based witness instead of
+    /// per-property synthesis — CONFIRMED empirically
+    /// (`JSONEncoder().encode(addrSpec)` produces a bare JSON string, not
+    /// `{"localPart":...,"domain":...}`). Decoding a bare string routes
+    /// through `init?(rawValue:)` -> `self.init(ascii:)`, which was ALREADY
+    /// fully grammar-validating before this revision. These tests exercise
+    /// the REAL decode path and pass both before and after this revision —
+    /// recorded as a confirmed-safe finding, not a red -> green regression.
+    @Suite
+    struct `Edge Case` {
+        @Test
+        func `Rejects a Codable-decoded raw string carrying a CRLF header-injection payload`() throws {
+            let json = Data(
+                """
+                "user\\r\\nBcc: attacker@evil.example@example.com"
+                """.utf8
+            )
+            #expect(throws: (any Swift.Error).self) {
+                _ = try JSONDecoder().decode(RFC_2822.AddrSpec.self, from: json)
+            }
+        }
+
+        @Test
+        func `Rejects a dictionary-shaped payload — never the real wire shape to begin with`() throws {
+            // A `{"localPart":...,"domain":...}` object is what naive
+            // per-property Codable synthesis would use, and what the
+            // adversarial-review claim assumed. It is rejected here too,
+            // but only because it doesn't match the actual (raw-string)
+            // wire shape — not because validation caught anything.
+            let json = Data(
+                """
+                {"localPart":"user","domain":"example.com"}
+                """.utf8
+            )
+            #expect(throws: (any Swift.Error).self) {
+                _ = try JSONDecoder().decode(RFC_2822.AddrSpec.self, from: json)
+            }
+        }
+
+        @Test
+        func `Still decodes a well-formed raw string via Codable`() throws {
+            let json = Data(
+                """
+                "user@example.com"
+                """.utf8
+            )
+            let addr = try JSONDecoder().decode(RFC_2822.AddrSpec.self, from: json)
+            #expect(addr.localPart == "user")
+            #expect(addr.domain == "example.com")
+        }
+    }
+}
+
 // MARK: - Mailbox Tests
 
 extension RFC_2822.Mailbox {
@@ -298,6 +359,92 @@ extension RFC_2822.Mailbox.Test {
             let reparsed = try RFC_2822.Mailbox(ascii: ascii.map(\.byte))
             #expect(reparsed.emailAddress == original.emailAddress)
         }
+
+        // MARK: - F-002 residual-bypass audit (revision 1): the Codable
+        // decode path
+        //
+        // An adversarial pre-review claimed `Mailbox`'s COMPILER-SYNTHESIZED
+        // `init(from:)` assigned `displayName` directly from decoded
+        // dictionary-shaped JSON (e.g. `{"displayName":"Evil\r\nBcc:
+        // x@evil","emailAddress":{...}}`), never calling
+        // `validateDisplayName`. Verifying this claim empirically (decoding
+        // exactly that dictionary shape) shows it does NOT reproduce against
+        // the actual branch: `Mailbox` also conforms to
+        // `Swift.RawRepresentable` (`RawValue == String`, below), so its
+        // real `Codable` conformance resolves to the Swift standard
+        // library's raw-value-based witness instead of per-property
+        // synthesis (CONFIRMED — `JSONEncoder().encode(mailbox)` produces a
+        // bare string, e.g. `"John <john@example.com>"`, never the
+        // dictionary shape). Decoding therefore already routes through
+        // `init?(rawValue:)` -> `self.init(ascii:)`, the SAME wire-text
+        // parser F-002 validated. These tests exercise the REAL decode path
+        // (a bare JSON string) and the (never-real) dictionary shape, and
+        // both pass before and after this revision — recorded as a
+        // confirmed-safe finding, not a red -> green regression test.
+
+        @Test
+        func `Rejects a Codable-decoded raw string carrying a CRLF header-injection payload`() throws {
+            let json = Data(
+                """
+                "Evil\\r\\nBcc: attacker@evil.example <john@example.com>"
+                """.utf8
+            )
+            #expect(throws: (any Swift.Error).self) {
+                _ = try JSONDecoder().decode(RFC_2822.Mailbox.self, from: json)
+            }
+        }
+
+        @Test
+        func `Rejects a Codable-decoded raw string carrying a bare LF`() throws {
+            let json = Data(
+                """
+                "Evil\\nHeader: injected <john@example.com>"
+                """.utf8
+            )
+            #expect(throws: (any Swift.Error).self) {
+                _ = try JSONDecoder().decode(RFC_2822.Mailbox.self, from: json)
+            }
+        }
+
+        @Test
+        func `Rejects a Codable-decoded raw string carrying a bare CR`() throws {
+            let json = Data(
+                """
+                "Evil\\rHeader: injected <john@example.com>"
+                """.utf8
+            )
+            #expect(throws: (any Swift.Error).self) {
+                _ = try JSONDecoder().decode(RFC_2822.Mailbox.self, from: json)
+            }
+        }
+
+        @Test
+        func `Rejects a dictionary-shaped payload — never the real wire shape to begin with`() throws {
+            // The adversarial-review claim's exact hypothetical payload.
+            // Rejected here too, but only because it doesn't match the
+            // actual (raw-string) wire shape, not because validation caught
+            // the embedded CRLF specifically.
+            let json = Data(
+                """
+                {"displayName":"Evil\\r\\nBcc: attacker@evil.example","emailAddress":{"localPart":"user","domain":"example.com"}}
+                """.utf8
+            )
+            #expect(throws: (any Swift.Error).self) {
+                _ = try JSONDecoder().decode(RFC_2822.Mailbox.self, from: json)
+            }
+        }
+
+        @Test
+        func `Still decodes a well-formed raw string via Codable`() throws {
+            let json = Data(
+                """
+                "John Doe <john@example.com>"
+                """.utf8
+            )
+            let mailbox = try JSONDecoder().decode(RFC_2822.Mailbox.self, from: json)
+            #expect(mailbox.displayName == "John Doe")
+            #expect(mailbox.emailAddress.localPart == "john")
+        }
     }
 }
 
@@ -376,6 +523,14 @@ extension RFC_2822.Address.Test {
     /// F-005 regression coverage: the group-vs-mailbox `":"` scan is
     /// quote-aware, so a colon embedded in a quoted display name is not
     /// mistaken for the `display-name ":" mailbox-list ";"` group separator.
+    ///
+    /// Also carries F-002 residual-bypass audit coverage: `Address.Kind`'s
+    /// `group` case holds its own display-name `String`, independent of
+    /// `Mailbox.displayName`, validated by neither the `ASCII.Parseable`
+    /// wire parser nor the compiler-synthesized `Decodable` pre-fix — and
+    /// `Address`'s serializers apply NO escaping to it at all (not even the
+    /// quoted-pair escaping `Mailbox` applies). See the tests below this
+    /// suite's F-005 cases.
     @Suite
     struct `Edge Case` {
         @Test
@@ -402,6 +557,143 @@ extension RFC_2822.Address.Test {
             }
             #expect(name == "Team")
             #expect(mailboxes.count == 2)
+        }
+
+        // MARK: - F-002 residual-bypass audit (revision 1): Address.Kind
+        // .group's own display name, on both the wire-parse and
+        // Codable-decode paths.
+        //
+        // Two DIFFERENT decode surfaces exist here, and they needed two
+        // different fixes:
+        //  1. `RFC_2822.Address` itself is `Swift.RawRepresentable`
+        //     (`RawValue == String`), so `JSONDecoder().decode(Address.self,
+        //     from:)` decodes a bare JSON string and routes through
+        //     `init?(rawValue:)` -> `self.init(ascii:)` — this is a REAL
+        //     bypass this revision fixes: `init(ascii:)`'s group branch had
+        //     NO display-name validation pre-revision (unrelated to F-002's
+        //     original `Mailbox`-only scope). Tests below decode a bare
+        //     string and assert rejection.
+        //  2. `RFC_2822.Address.Kind` is NOT `RawRepresentable`, so a BARE
+        //     `Kind` value (e.g. `JSONDecoder().decode(Kind.self, from:)`,
+        //     reachable if `Kind` is used as a payload anywhere without the
+        //     `Address` wrapper) decodes via ordinary compiler-synthesized
+        //     enum Codable — CONFIRMED empirically to use a keyed container
+        //     with positional keys `_0`/`_1` under the case name (e.g.
+        //     `{"group":{"_0":"Team","_1":[]}}`), and pre-revision this had
+        //     NO validation at all for the `group` case's display name —
+        //     the genuinely reachable, previously-unidentified bypass this
+        //     revision closes. Tests below use that real shape.
+
+        @Test
+        func `Rejects a group display name carrying a CRLF header-injection payload parsed from wire text`() throws {
+            // The group-separator colon must appear exactly once, right
+            // before a well-formed mailbox list — a colon inside the
+            // injected payload itself would be picked up as (the wrong)
+            // group separator and fail for an unrelated reason (a malformed
+            // mailbox-list fragment), which wouldn't actually demonstrate
+            // the missing display-name validation this fixes.
+            let malicious = "Evil\r\nBcc-attacker-evil-example:john@example.com;"
+            #expect(throws: RFC_2822.Address.Error.self) {
+                _ = try RFC_2822.Address(ascii: Array(malicious.utf8))
+            }
+        }
+
+        @Test
+        func `Rejects a Codable-decoded Address raw string whose group display name carries CRLF`() throws {
+            // Same single-colon shape as the wire-parse test above, for the
+            // same reason (an ambiguous second colon would fail for an
+            // unrelated malformed-mailbox-list reason instead).
+            let json = Data(
+                """
+                "Evil\\r\\nBcc-attacker-evil-example:john@example.com;"
+                """.utf8
+            )
+            #expect(throws: (any Swift.Error).self) {
+                _ = try JSONDecoder().decode(RFC_2822.Address.self, from: json)
+            }
+        }
+
+        @Test
+        func `Still decodes a well-formed Address raw string via Codable`() throws {
+            let json = Data(
+                """
+                "Team: john@example.com;"
+                """.utf8
+            )
+            let address = try JSONDecoder().decode(RFC_2822.Address.self, from: json)
+            guard case .group(let name, let mailboxes) = address.kind else {
+                Issue.record("Expected a group address, got a mailbox")
+                return
+            }
+            #expect(name == "Team")
+            #expect(mailboxes.count == 1)
+        }
+
+        @Test
+        func `Rejects a Codable-decoded bare Kind whose group display name carries a CRLF header-injection payload`() throws {
+            let json = Data(
+                """
+                {"group":{"_0":"Evil\\r\\nBcc: attacker@evil.example","_1":[]}}
+                """.utf8
+            )
+            #expect(throws: (any Swift.Error).self) {
+                _ = try JSONDecoder().decode(RFC_2822.Address.Kind.self, from: json)
+            }
+        }
+
+        @Test
+        func `Rejects a Codable-decoded bare Kind whose group display name carries a bare LF`() throws {
+            let json = Data(
+                """
+                {"group":{"_0":"Evil\\nHeader: injected","_1":[]}}
+                """.utf8
+            )
+            #expect(throws: (any Swift.Error).self) {
+                _ = try JSONDecoder().decode(RFC_2822.Address.Kind.self, from: json)
+            }
+        }
+
+        @Test
+        func `Rejects a Codable-decoded bare Kind whose group display name carries a bare CR`() throws {
+            let json = Data(
+                """
+                {"group":{"_0":"Evil\\rHeader: injected","_1":[]}}
+                """.utf8
+            )
+            #expect(throws: (any Swift.Error).self) {
+                _ = try JSONDecoder().decode(RFC_2822.Address.Kind.self, from: json)
+            }
+        }
+
+        @Test
+        func `Still decodes a well-formed bare Kind group via Codable`() throws {
+            let json = Data(
+                """
+                {"group":{"_0":"Team","_1":[]}}
+                """.utf8
+            )
+            let kind = try JSONDecoder().decode(RFC_2822.Address.Kind.self, from: json)
+            guard case .group(let name, let mailboxes) = kind else {
+                Issue.record("Expected a group, got a mailbox")
+                return
+            }
+            #expect(name == "Team")
+            #expect(mailboxes.isEmpty)
+        }
+
+        @Test
+        func `Still decodes a well-formed bare Kind mailbox via Codable`() throws {
+            let json = Data(
+                """
+                {"mailbox":{"_0":"John <john@example.com>"}}
+                """.utf8
+            )
+            let kind = try JSONDecoder().decode(RFC_2822.Address.Kind.self, from: json)
+            guard case .mailbox(let mailbox) = kind else {
+                Issue.record("Expected a mailbox, got a group")
+                return
+            }
+            #expect(mailbox.displayName == "John")
         }
     }
 }
@@ -1121,3 +1413,7 @@ struct ASCIIBinaryEquivalenceTests {
         #expect(ascii.map(\.byte) == wire)
     }
 }
+
+
+
+

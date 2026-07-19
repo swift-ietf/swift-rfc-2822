@@ -58,6 +58,98 @@ extension RFC_2822.Address {
     }
 }
 
+// MARK: - Codable (group display-name injection-guard on decode)
+
+extension RFC_2822.Address.Kind {
+    private enum CodingKeys: String, CodingKey {
+        case mailbox
+        case group
+    }
+
+    /// Keys for the nested per-case payload container. Unlike `Mailbox`/
+    /// `AddrSpec`/`Address` (all `RawRepresentable<String>`, which makes
+    /// their Codable conformance resolve to the Swift standard library's
+    /// raw-value-based witness instead of per-property synthesis — see
+    /// those types' `preconditionInjectionSafe` doc comments), `Kind` is
+    /// NOT `RawRepresentable`, so IS decoded via ordinary compiler-
+    /// synthesized enum-with-associated-values `Codable`: a keyed container
+    /// under the case name, itself holding ANOTHER keyed container whose
+    /// keys are the positional labels `_0`, `_1`, … for each unlabeled
+    /// associated value — CONFIRMED empirically
+    /// (`JSONEncoder().encode(Kind.group("Team", []))` produces
+    /// `{"group":{"_0":"Team","_1":[]}}`, and the single-payload `.mailbox`
+    /// case produces `{"mailbox":{"_0":"John <john@example.com>"}}`). This
+    /// hand-written `init(from:)` mirrors that exact shape (so `encode(to:)`
+    /// stays compiler-synthesized and wire-compatible) but routes the
+    /// `group` case's display-name `String` through
+    /// `RFC_2822.Mailbox.validateDisplayName` — the exact validator
+    /// `Mailbox.displayName` uses, reused rather than duplicated — before it
+    /// can be stored.
+    private enum PayloadKeys: String, CodingKey {
+        case _0
+        case _1
+    }
+
+    /// Hand-written `Decodable` conformance closing a REAL, empirically
+    /// confirmed bypass: decoding a bare `RFC_2822.Address.Kind.group` value
+    /// directly (not wrapped in `Address` — e.g. as the payload of some
+    /// other Codable structure, or via `JSONDecoder().decode(Kind.self,
+    /// from:)`) previously assigned the display-name `String` straight from
+    /// untrusted JSON with NO validation at all (there never was a
+    /// validating construction path for it, unlike `Mailbox.displayName`).
+    /// A group display name is the same RFC 2822 §3.4 `display-name`
+    /// grammar production as a mailbox's, and `Address`'s serializers apply
+    /// NO escaping to it at all — not even the quoted-pair escaping
+    /// `Mailbox` applies to `"`/`\` — making this the most exposed of the
+    /// Codable header-string fields audited alongside the F-002
+    /// residual-bypass fix. (When `Kind` is reached indirectly, wrapped in
+    /// `Address`, `Address`'s own `RawRepresentable`-based decode routes
+    /// through the now-validated `Address.init(ascii:)` group branch
+    /// instead of this initializer — both paths are closed.)
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if container.contains(.mailbox) {
+            let payload = try container.nestedContainer(
+                keyedBy: PayloadKeys.self, forKey: .mailbox)
+            let mailbox = try payload.decode(RFC_2822.Mailbox.self, forKey: ._0)
+            self = .mailbox(mailbox)
+        } else if container.contains(.group) {
+            let payload = try container.nestedContainer(
+                keyedBy: PayloadKeys.self, forKey: .group)
+            let displayName = try payload.decode(String.self, forKey: ._0)
+            let members = try payload.decode([RFC_2822.Mailbox].self, forKey: ._1)
+            try RFC_2822.Mailbox.validateDisplayName(displayName)
+            self = .group(displayName, members)
+        } else {
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: container.codingPath,
+                    debugDescription: "Expected a 'mailbox' or 'group' key"
+                )
+            )
+        }
+    }
+}
+
+// MARK: - Emit-time injection guard (defense in depth)
+
+extension RFC_2822.Address {
+    /// Belt-and-suspenders emit-time guard for the `group` case's display
+    /// name, mirroring `RFC_2822.Mailbox`'s `preconditionInjectionSafe`:
+    /// every construction path (the hand-written `Kind.Decodable`
+    /// conformance above) validates the display name before it can be
+    /// stored, so a CR/LF byte reaching a serializer means an invariant was
+    /// violated upstream — crash loudly (a live-in-release `precondition`,
+    /// not `assert`) rather than silently emit a forged header line.
+    fileprivate static func preconditionGroupDisplayNameInjectionSafe(_ displayName: String) {
+        precondition(
+            !displayName.utf8.contains(where: { $0 == 0x0D || $0 == 0x0A }),
+            "RFC_2822.Address.Kind.group: display name contains CR/LF at serialize time — "
+                + "construction-time validation was bypassed"
+        )
+    }
+}
+
 // MARK: - Hashable
 
 extension RFC_2822.Address: Hashable {}
@@ -77,6 +169,7 @@ extension RFC_2822.Address: ASCII.Serializable, Binary.Serializable {
         case .mailbox(let mailbox):
             RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
         case .group(let displayName, let mailboxes):
+            preconditionGroupDisplayNameInjectionSafe(displayName)
             for byte in displayName.utf8 { buffer.append(ASCII.Code(byte)) }
             buffer.append(ASCII.Code.colon)
             for (index, mailbox) in mailboxes.enumerated() {
@@ -104,6 +197,7 @@ extension RFC_2822.Address: ASCII.Serializable, Binary.Serializable {
         case .mailbox(let mailbox):
             RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
         case .group(let displayName, let mailboxes):
+            preconditionGroupDisplayNameInjectionSafe(displayName)
             for byte in displayName.utf8 { buffer.append(Byte(byte)) }
             buffer.append(ASCII.Code.colon.byte)
             for (index, mailbox) in mailboxes.enumerated() {
@@ -127,6 +221,13 @@ extension RFC_2822.Address {
         case invalidMailbox(RFC_2822.Mailbox.Error)
         case invalidGroup(_ value: String)
         case missingGroupTerminator(_ value: String)
+
+        /// Group display name contains a CR/LF (or other control byte) — the
+        /// header-injection vector — or a non-ASCII byte. Mirrors
+        /// `RFC_2822.Mailbox.Error.invalidDisplayName`; a group's
+        /// display-name is the same RFC 2822 §3.4 grammar production as a
+        /// mailbox's.
+        case invalidDisplayName(_ value: String)
     }
 }
 
@@ -141,6 +242,8 @@ extension RFC_2822.Address.Error {
             return "Invalid group format: '\(value)'"
         case .missingGroupTerminator(let value):
             return "Missing ';' terminator in group: '\(value)'"
+        case .invalidDisplayName(let value):
+            return "Invalid group display name (control byte or non-ASCII): '\(value)'"
         }
     }
 }
@@ -229,6 +332,18 @@ extension RFC_2822.Address: ASCII.Parseable {
                 )
             } else {
                 displayName = String(decoding: displayNameCodes, as: UTF8.self)
+            }
+
+            // Reject header injection (CR/LF/control bytes) or non-ASCII in a
+            // wire-parsed group display name too — mirrors Mailbox's F-002
+            // fix, applied at every construction path (not only the
+            // Codable-decode path fixed alongside it), so a parse ->
+            // re-serialize round trip cannot replay attacker-controlled
+            // bytes into a forged header line.
+            do throws(RFC_2822.Mailbox.Error) {
+                try RFC_2822.Mailbox.validateDisplayName(displayName)
+            } catch {
+                throw Error.invalidDisplayName(displayName)
             }
 
             // Extract mailbox list (between : and ;)
@@ -340,6 +455,7 @@ extension RFC_2822.Address: CustomStringConvertible {
         case .mailbox(let mailbox):
             return mailbox.description
         case .group(let displayName, let mailboxes):
+            Self.preconditionGroupDisplayNameInjectionSafe(displayName)
             if mailboxes.isEmpty { return "\(displayName):;" }
             let members = mailboxes.map(\.description).joined(separator: ", ")
             return "\(displayName): \(members);"
