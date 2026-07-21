@@ -976,6 +976,44 @@ extension RFC_2822.Timestamp.Test {
     }
 }
 
+extension RFC_2822.Timestamp.Test {
+    /// B2-19 (url-routing-stack-first-principles-review): this type retires
+    /// swift-mailgun-types' hand-rolled `rfc2822Formatter`
+    /// (`DateFormatter` with `"EEE, dd MMM yyyy HH:mm:ss Z"`, en_US_POSIX,
+    /// GMT). These tests pin the mailgun wire shape: parse and print must
+    /// round-trip that fixed-format form byte-identically.
+    @Suite
+    struct Integration {
+        @Test
+        func `Mailgun canonical UTC form round-trips byte-identically`() throws {
+            let wire = "Fri, 13 Feb 2009 23:31:30 +0000"
+            let parsed = try RFC_2822.Timestamp(ascii: Array(wire.utf8))
+            #expect(parsed.description == wire)
+            var bytes: [Byte] = []
+            RFC_2822.Timestamp.serialize(parsed, into: &bytes)
+            #expect(String(decoding: bytes, as: UTF8.self) == wire)
+        }
+
+        @Test
+        func `Mailgun-shaped non-UTC offset form round-trips byte-identically`() throws {
+            let wire = "Thu, 13 Oct 2011 18:02:00 +0200"
+            let parsed = try RFC_2822.Timestamp(ascii: Array(wire.utf8))
+            #expect(parsed.description == wire)
+            #expect(parsed.zone == .offset(minutes: 120))
+            let reparsed = try RFC_2822.Timestamp(ascii: Array(parsed.description.utf8))
+            #expect(reparsed == parsed)
+        }
+
+        @Test
+        func `Epoch-constructed timestamp prints the exact mailgun formatter output`() {
+            // rfc2822Formatter.string(from: Date(timeIntervalSince1970: 1234567890))
+            // == "Fri, 13 Feb 2009 23:31:30 +0000" (en_US_POSIX, GMT).
+            let timestamp = RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890)
+            #expect(timestamp.description == "Fri, 13 Feb 2009 23:31:30 +0000")
+        }
+    }
+}
+
 // MARK: - Fields Tests
 
 extension RFC_2822.Fields {
