@@ -3,3 +3,4 @@ builder:
   configs:
   - documentation_targets:
     - RFC 2822
+    - RFC 2822 Foundation
