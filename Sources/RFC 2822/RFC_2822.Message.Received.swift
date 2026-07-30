@@ -212,7 +212,11 @@ extension RFC_2822.Message.Received: Swift.RawRepresentable {
 
     /// Creates a received field by parsing `rawValue`, or `nil` if it is malformed.
     public init?(rawValue: String) {
-        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+        do throws(RFC_2822.Message.Received.Error) {
+            try self.init(ascii: rawValue.utf8.map { Byte($0) })
+        } catch {
+            return nil
+        }
     }
 }
 

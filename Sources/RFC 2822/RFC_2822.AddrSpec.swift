@@ -207,10 +207,8 @@ extension RFC_2822.AddrSpec: ASCII.Parseable {
 
         // Find the @ separator (use last @ to handle quoted local-parts with @)
         var atIndex: Bytes.Index?
-        for index in bytes.indices {
-            if (try? ASCII.Code(bytes[index])) == ASCII.Code.commercialAt {
-                atIndex = index
-            }
+        for index in bytes.indices where bytes[index] == ASCII.Code.commercialAt.byte {
+            atIndex = index
         }
 
         guard let at = atIndex else {
@@ -448,7 +446,11 @@ extension RFC_2822.AddrSpec: Swift.RawRepresentable {
 
     /// Creates an addr-spec by validating `rawValue`, or `nil` if it is malformed.
     public init?(rawValue: String) {
-        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+        do throws(RFC_2822.AddrSpec.Error) {
+            try self.init(ascii: rawValue.utf8.map { Byte($0) })
+        } catch {
+            return nil
+        }
     }
 }
 

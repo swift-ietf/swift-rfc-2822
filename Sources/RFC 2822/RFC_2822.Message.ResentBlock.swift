@@ -351,7 +351,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
 
             switch fieldName {
             case "resent-date":
-                timestamp = try? RFC_2822.Timestamp(ascii: fieldValueBytes)
+                timestamp = Self.leniently { try RFC_2822.Timestamp(ascii: fieldValueBytes) }
 
             case "resent-from":
                 // Parse comma-separated mailboxes
@@ -359,13 +359,16 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                 for mailboxCodes in mailboxCodeArrays {
                     let trimmed = trimWhitespace(mailboxCodes)
                     guard !trimmed.isEmpty else { continue }
-                    if let mailbox = try? RFC_2822.Mailbox(ascii: [Byte](trimmed)) {
+                    let mailbox = Self.leniently {
+                        try RFC_2822.Mailbox(ascii: [Byte](trimmed))
+                    }
+                    if let mailbox {
                         from.append(mailbox)
                     }
                 }
 
             case "resent-sender":
-                sender = try? RFC_2822.Mailbox(ascii: fieldValueBytes)
+                sender = Self.leniently { try RFC_2822.Mailbox(ascii: fieldValueBytes) }
 
             case "resent-to":
                 var addresses: [RFC_2822.Address] = []
@@ -373,7 +376,10 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                 for addressCodes in addressCodeArrays {
                     let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
-                    if let address = try? RFC_2822.Address(ascii: [Byte](trimmed)) {
+                    let address = Self.leniently {
+                        try RFC_2822.Address(ascii: [Byte](trimmed))
+                    }
+                    if let address {
                         addresses.append(address)
                     }
                 }
@@ -385,7 +391,10 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                 for addressCodes in addressCodeArrays {
                     let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
-                    if let address = try? RFC_2822.Address(ascii: [Byte](trimmed)) {
+                    let address = Self.leniently {
+                        try RFC_2822.Address(ascii: [Byte](trimmed))
+                    }
+                    if let address {
                         addresses.append(address)
                     }
                 }
@@ -397,14 +406,17 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                 for addressCodes in addressCodeArrays {
                     let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
-                    if let address = try? RFC_2822.Address(ascii: [Byte](trimmed)) {
+                    let address = Self.leniently {
+                        try RFC_2822.Address(ascii: [Byte](trimmed))
+                    }
+                    if let address {
                         addresses.append(address)
                     }
                 }
                 bcc = addresses.isEmpty ? nil : addresses
 
             case "resent-message-id":
-                messageID = try? RFC_2822.Message.ID(ascii: fieldValueBytes)
+                messageID = Self.leniently { try RFC_2822.Message.ID(ascii: fieldValueBytes) }
 
             default:
                 break
@@ -430,6 +442,25 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
             messageID: messageID
         )
     }
+
+    /// Runs `parse` and returns `nil` when it fails.
+    ///
+    /// A `Resent-*` block is trace information appended by relays, and this parser
+    /// reads it leniently: an individual malformed field is dropped rather than
+    /// failing the whole block. The two fields that are *not* optional —
+    /// `Resent-Date` and `Resent-From` — are enforced by the `guard`s after the
+    /// field loop, which report ``Error/missingResentDate`` /
+    /// ``Error/missingResentFrom`` instead. Dropping here is therefore the total
+    /// answer for this field, not a swallowed error.
+    private static func leniently<Value, Failure: Swift.Error>(
+        _ parse: () throws(Failure) -> Value
+    ) -> Value? {
+        do throws(Failure) {
+            return try parse()
+        } catch {
+            return nil
+        }
+    }
 }
 
 // MARK: - RawRepresentable / CustomStringConvertible
@@ -443,7 +474,11 @@ extension RFC_2822.Message.ResentBlock: Swift.RawRepresentable {
 
     /// Creates a resent block by parsing `rawValue`, or `nil` if it is malformed.
     public init?(rawValue: String) {
-        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+        do throws(RFC_2822.Message.ResentBlock.Error) {
+            try self.init(ascii: rawValue.utf8.map { Byte($0) })
+        } catch {
+            return nil
+        }
     }
 }
 

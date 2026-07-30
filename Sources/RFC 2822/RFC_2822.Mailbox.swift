@@ -349,7 +349,11 @@ extension RFC_2822.Mailbox: Swift.RawRepresentable {
 
     /// Creates a mailbox by parsing `rawValue`, or `nil` if it is malformed.
     public init?(rawValue: String) {
-        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+        do throws(RFC_2822.Mailbox.Error) {
+            try self.init(ascii: rawValue.utf8.map { Byte($0) })
+        } catch {
+            return nil
+        }
     }
 }
 

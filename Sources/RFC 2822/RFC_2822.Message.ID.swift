@@ -322,7 +322,11 @@ extension RFC_2822.Message.ID: Swift.RawRepresentable {
 
     /// Creates a message ID by validating `rawValue`, or `nil` if it is malformed.
     public init?(rawValue: String) {
-        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+        do throws(RFC_2822.Message.ID.Error) {
+            try self.init(ascii: rawValue.utf8.map { Byte($0) })
+        } catch {
+            return nil
+        }
     }
 }
 

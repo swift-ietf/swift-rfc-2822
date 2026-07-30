@@ -173,7 +173,11 @@ extension RFC_2822.Message.Path: Swift.RawRepresentable {
 
     /// Creates a path by parsing `rawValue`, or `nil` if it is malformed.
     public init?(rawValue: String) {
-        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+        do throws(RFC_2822.Message.Path.Error) {
+            try self.init(ascii: rawValue.utf8.map { Byte($0) })
+        } catch {
+            return nil
+        }
     }
 }
 

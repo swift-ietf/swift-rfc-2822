@@ -132,7 +132,18 @@ extension RFC_2822.Message {
         // Type-up: lift to ASCII.Code at the entry boundary for grammar parsing,
         // but keep a [Byte] copy for body/field byte-domain consumption.
         let byteArray = [Byte](bytes)
-        let codeArray = byteArray.map { (try? ASCII.Code($0)) ?? ASCII.Code(unchecked: 0) }
+        let codeArray = byteArray.map { byte -> ASCII.Code in
+            do throws(ASCII.Code.Error) {
+                return try ASCII.Code(byte)
+            } catch {
+                // REASON: RFC 2822 section 2.1 restricts a message to US-ASCII, so a
+                // byte of 0x80 or above is outside the grammar entirely. Folding it to
+                // NUL preserves this parser's existing behaviour exactly: the grammar
+                // scan below rejects it, and `byteArray` retains the original byte for
+                // the body.
+                return ASCII.Code(unchecked: 0)
+            }
+        }
 
         // Find the blank line (CRLF CRLF) that separates headers from body
         var headerEndIndex: Int?
@@ -205,7 +216,11 @@ extension RFC_2822.Message: Swift.RawRepresentable {
 
     /// Creates a message by parsing `rawValue`'s UTF-8 bytes, or `nil` if malformed.
     public init?(rawValue: String) {
-        try? self.init(binary: rawValue.utf8.map { Byte($0) })
+        do throws(RFC_2822.Message.Error) {
+            try self.init(binary: rawValue.utf8.map { Byte($0) })
+        } catch {
+            return nil
+        }
     }
 }
 

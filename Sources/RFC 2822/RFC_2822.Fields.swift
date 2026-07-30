@@ -471,7 +471,16 @@ extension RFC_2822.Fields: ASCII.Parseable {
 
         // Helper: check if codes equal string (case-insensitive)
         func codesEqualCaseInsensitive(_ codes: [ASCII.Code], _ string: String) -> Bool {
-            let stringCodes = (try? [ASCII.Code](string.utf8)) ?? []
+            let stringCodes: [ASCII.Code]
+            do throws(ASCII.Code.Error) {
+                stringCodes = try [ASCII.Code](string.utf8)
+            } catch {
+                // REASON: a non-ASCII comparand can never equal a sequence of
+                // `ASCII.Code`, so `false` is the total answer, not a swallow. All 13
+                // call sites pass an ASCII field-name literal ("date", "from", …), so
+                // this branch is unreachable today.
+                return false
+            }
             guard codes.count == stringCodes.count else { return false }
             for i in 0..<codes.count {
                 let c1 = codes[i].lowercased()
@@ -774,7 +783,11 @@ extension RFC_2822.Fields: Swift.RawRepresentable {
 
     /// Creates fields by parsing `rawValue`, or `nil` if they are malformed.
     public init?(rawValue: String) {
-        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+        do throws(RFC_2822.Fields.Error) {
+            try self.init(ascii: rawValue.utf8.map { Byte($0) })
+        } catch {
+            return nil
+        }
     }
 }
 

@@ -191,7 +191,11 @@ extension RFC_2822.Message.Received.NameValuePair: Swift.RawRepresentable {
 
     /// Creates a pair by parsing `rawValue`, or `nil` if it is malformed.
     public init?(rawValue: String) {
-        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+        do throws(RFC_2822.Message.Received.NameValuePair.Error) {
+            try self.init(ascii: rawValue.utf8.map { Byte($0) })
+        } catch {
+            return nil
+        }
     }
 }
 

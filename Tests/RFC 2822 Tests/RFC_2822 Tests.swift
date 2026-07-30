@@ -55,6 +55,15 @@ extension RFC_2822.AddrSpec {
         }
 
         @Test
+        func `Successfully creates addr-spec with an at sign inside a quoted local part`() throws {
+            // The domain-separating @ must be the LAST @, not the first one found
+            // inside the quoted local-part.
+            let addr = try RFC_2822.AddrSpec(ascii: Array("\"a@b\"@example.com".utf8))
+            #expect(addr.localPart == "\"a@b\"")
+            #expect(addr.domain == "example.com")
+        }
+
+        @Test
         func `Successfully creates addr-spec with domain literal`() throws {
             let addr = try RFC_2822.AddrSpec(ascii: Array("user@[192.168.1.1]".utf8))
             #expect(addr.domain == "[192.168.1.1]")

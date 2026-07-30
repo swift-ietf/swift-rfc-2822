@@ -90,6 +90,13 @@ extension RFC_2822.Address.Kind {
         case _1
     }
 
+    // REASON: `Swift.Decodable.init(from:)` is declared upstream with untyped
+    // `throws` and an existential `Decoder` parameter; a conforming implementation
+    // is signature-forced and can express neither `throws(E)` nor a generic
+    // parameter. The block form is used here instead of `disable:next` because this
+    // declaration carries a doc comment: a directive between the doc comment and the
+    // declaration trips `orphaned_doc_comment`.
+    // swiftlint:disable no_any_protocol_existential typed_throws_required
     /// Hand-written `Decodable` conformance closing a REAL, empirically
     /// confirmed bypass: decoding a bare `RFC_2822.Address.Kind.group` value
     /// directly (not wrapped in `Address` — e.g. as the payload of some
@@ -129,6 +136,7 @@ extension RFC_2822.Address.Kind {
             )
         }
     }
+    // swiftlint:enable no_any_protocol_existential typed_throws_required
 }
 
 // MARK: - Emit-time injection guard (defense in depth)
@@ -449,7 +457,11 @@ extension RFC_2822.Address: Swift.RawRepresentable {
 
     /// Creates an address by parsing `rawValue`, or `nil` if it is malformed.
     public init?(rawValue: String) {
-        try? self.init(ascii: rawValue.utf8.map { Byte($0) })
+        do throws(RFC_2822.Address.Error) {
+            try self.init(ascii: rawValue.utf8.map { Byte($0) })
+        } catch {
+            return nil
+        }
     }
 }
 

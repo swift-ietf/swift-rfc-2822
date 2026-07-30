@@ -125,12 +125,22 @@ extension RFC_2822.Message.Body: CustomStringConvertible {
 }
 
 extension RFC_2822.Message.Body: Codable {
+    // REASON: `Swift.Encodable.encode(to:)` is declared upstream with untyped
+    // `throws` and an existential `Encoder` parameter; a conforming implementation
+    // is signature-forced and can express neither `throws(E)` nor a generic
+    // parameter.
+    // swiftlint:disable:next no_any_protocol_existential typed_throws_required
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         // Encode as string for JSON compatibility
         try container.encode(String(self))
     }
 
+    // REASON: `Swift.Decodable.init(from:)` is declared upstream with untyped
+    // `throws` and an existential `Decoder` parameter; a conforming implementation
+    // is signature-forced and can express neither `throws(E)` nor a generic
+    // parameter.
+    // swiftlint:disable:next no_any_protocol_existential typed_throws_required
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
         let string = try container.decode(String.self)
