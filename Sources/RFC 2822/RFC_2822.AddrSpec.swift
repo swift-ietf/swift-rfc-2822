@@ -427,7 +427,7 @@ extension RFC_2822.AddrSpec {
     }
 
     /// Returns the appropriate error for the part being validated
-    private static func errorFor(_ part: Part, _ value: String) -> Error {
+    private static func errorFor(_ part: Part, _ value: String) -> RFC_2822.AddrSpec.Error {
         switch part {
         case .localPart: return Error.invalidLocalPart(value)
         case .domain: return Error.invalidDomain(value)
