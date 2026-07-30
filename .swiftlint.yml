@@ -1,7 +1,7 @@
 # SwiftLint configuration for swift-rfc-2822
 # Inherits from the shared parent configuration in swift-standards
 
-parent_config: https://raw.githubusercontent.com/swift-standards/swift-standards/main/.swiftlint.yml
+parent_config: https://raw.githubusercontent.com/swift-standards/.github/main/.swiftlint.yml
 
 # Package-specific overrides
 # RFC 2822 parsing requires complex state machines that exceed normal complexity thresholds
