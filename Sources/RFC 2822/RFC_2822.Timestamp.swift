@@ -101,12 +101,17 @@ extension RFC_2822 {
             second: Int = 0,
             zone: Zone = .offset(minutes: 0)
         ) throws(Error) {
-            guard day >= 1 && day <= RFC_2822.Timestamp.daysInMonth(month: month.rawValue, year: year)
+            guard
+                day >= 1 && day <= RFC_2822.Timestamp.daysInMonth(month: month.rawValue, year: year)
             else { throw Error.invalidComponent("day", "\(day)") }
             guard hour >= 0 && hour <= 23 else { throw Error.invalidComponent("hour", "\(hour)") }
-            guard minute >= 0 && minute <= 59 else { throw Error.invalidComponent("minute", "\(minute)") }
+            guard minute >= 0 && minute <= 59 else {
+                throw Error.invalidComponent("minute", "\(minute)")
+            }
             // RFC 2822 second = 2DIGIT; tolerate a positive leap second (60).
-            guard second >= 0 && second <= 60 else { throw Error.invalidComponent("second", "\(second)") }
+            guard second >= 0 && second <= 60 else {
+                throw Error.invalidComponent("second", "\(second)")
+            }
             if case .offset(let minutes) = zone {
                 guard minutes > -1440 && minutes < 1440 else {
                     throw Error.invalidComponent("zone", "\(minutes)")
@@ -361,6 +366,7 @@ extension RFC_2822.Timestamp {
         switch timestamp.zone {
         case .unknown:
             out += "-0000"
+
         case .offset(let minutes):
             let sign = minutes < 0 ? "-" : "+"
             let absMinutes = abs(minutes)
@@ -591,10 +597,14 @@ extension RFC_2822.Timestamp: ASCII.Parseable {
         }
 
         skipCFWS()
-        guard idx < end && codeArray[idx] == ASCII.Code.colon else { throw Error.invalidFormat(original) }
+        guard idx < end && codeArray[idx] == ASCII.Code.colon else {
+            throw Error.invalidFormat(original)
+        }
         idx += 1
         skipCFWS()
-        guard let (minuteValue, _) = parseDigits(max: 2) else { throw Error.invalidFormat(original) }
+        guard let (minuteValue, _) = parseDigits(max: 2) else {
+            throw Error.invalidFormat(original)
+        }
         guard minuteValue >= 0 && minuteValue <= 59 else {
             throw Error.invalidComponent("minute", "\(minuteValue)")
         }

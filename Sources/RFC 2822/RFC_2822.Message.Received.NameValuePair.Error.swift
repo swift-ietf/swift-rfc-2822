@@ -25,8 +25,10 @@ extension RFC_2822.Message.Received.NameValuePair.Error {
         switch self {
         case .empty:
             return "Name-value pair cannot be empty"
+
         case .missingValue(let name):
             return "Name-value pair missing value for name: '\(name)'"
+
         case .invalidName(let value):
             return "Invalid name in name-value pair: '\(value)'"
         }

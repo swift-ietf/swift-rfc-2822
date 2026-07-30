@@ -169,7 +169,9 @@ extension RFC_2822.AddrSpec.Test {
     @Suite
     struct `Edge Case` {
         @Test
-        func `Rejects a Codable-decoded raw string carrying a CRLF header-injection payload`() throws {
+        func `Rejects a Codable-decoded raw string carrying a CRLF header-injection payload`()
+            throws
+        {
             let json = Data(
                 """
                 "user\\r\\nBcc: attacker@evil.example@example.com"
@@ -181,7 +183,9 @@ extension RFC_2822.AddrSpec.Test {
         }
 
         @Test
-        func `Rejects a dictionary-shaped payload — never the real wire shape to begin with`() throws {
+        func `Rejects a dictionary-shaped payload — never the real wire shape to begin with`()
+            throws
+        {
             // A `{"localPart":...,"domain":...}` object is what naive
             // per-property Codable synthesis would use, and what the
             // adversarial-review claim assumed. It is rejected here too,
@@ -349,7 +353,9 @@ extension RFC_2822.Mailbox.Test {
         }
 
         @Test
-        func `A display name with embedded quotes still parses back after escaped serialization`() throws {
+        func `A display name with embedded quotes still parses back after escaped serialization`()
+            throws
+        {
             let original = try RFC_2822.Mailbox(
                 displayName: "Say \"hi\" \\ folks",
                 emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: "example.com")
@@ -383,7 +389,9 @@ extension RFC_2822.Mailbox.Test {
         // confirmed-safe finding, not a red -> green regression test.
 
         @Test
-        func `Rejects a Codable-decoded raw string carrying a CRLF header-injection payload`() throws {
+        func `Rejects a Codable-decoded raw string carrying a CRLF header-injection payload`()
+            throws
+        {
             let json = Data(
                 """
                 "Evil\\r\\nBcc: attacker@evil.example <john@example.com>"
@@ -419,7 +427,9 @@ extension RFC_2822.Mailbox.Test {
         }
 
         @Test
-        func `Rejects a dictionary-shaped payload — never the real wire shape to begin with`() throws {
+        func `Rejects a dictionary-shaped payload — never the real wire shape to begin with`()
+            throws
+        {
             // The adversarial-review claim's exact hypothetical payload.
             // Rejected here too, but only because it doesn't match the
             // actual (raw-string) wire shape, not because validation caught
@@ -585,7 +595,10 @@ extension RFC_2822.Address.Test {
         //     revision closes. Tests below use that real shape.
 
         @Test
-        func `Rejects a group display name carrying a CRLF header-injection payload parsed from wire text`() throws {
+        func
+            `Rejects a group display name carrying a CRLF header-injection payload parsed from wire text`()
+            throws
+        {
             // The group-separator colon must appear exactly once, right
             // before a well-formed mailbox list — a colon inside the
             // injected payload itself would be picked up as (the wrong)
@@ -599,7 +612,9 @@ extension RFC_2822.Address.Test {
         }
 
         @Test
-        func `Rejects a Codable-decoded Address raw string whose group display name carries CRLF`() throws {
+        func `Rejects a Codable-decoded Address raw string whose group display name carries CRLF`()
+            throws
+        {
             // Same single-colon shape as the wire-parse test above, for the
             // same reason (an ambiguous second colon would fail for an
             // unrelated malformed-mailbox-list reason instead).
@@ -630,7 +645,10 @@ extension RFC_2822.Address.Test {
         }
 
         @Test
-        func `Rejects a Codable-decoded bare Kind whose group display name carries a CRLF header-injection payload`() throws {
+        func
+            `Rejects a Codable-decoded bare Kind whose group display name carries a CRLF header-injection payload`()
+            throws
+        {
             let json = Data(
                 """
                 {"group":{"_0":"Evil\\r\\nBcc: attacker@evil.example","_1":[]}}
@@ -642,7 +660,9 @@ extension RFC_2822.Address.Test {
         }
 
         @Test
-        func `Rejects a Codable-decoded bare Kind whose group display name carries a bare LF`() throws {
+        func `Rejects a Codable-decoded bare Kind whose group display name carries a bare LF`()
+            throws
+        {
             let json = Data(
                 """
                 {"group":{"_0":"Evil\\nHeader: injected","_1":[]}}
@@ -654,7 +674,9 @@ extension RFC_2822.Address.Test {
         }
 
         @Test
-        func `Rejects a Codable-decoded bare Kind whose group display name carries a bare CR`() throws {
+        func `Rejects a Codable-decoded bare Kind whose group display name carries a bare CR`()
+            throws
+        {
             let json = Data(
                 """
                 {"group":{"_0":"Evil\\rHeader: injected","_1":[]}}
@@ -1451,7 +1473,3 @@ struct ASCIIBinaryEquivalenceTests {
         #expect(ascii.map(\.byte) == wire)
     }
 }
-
-
-
-

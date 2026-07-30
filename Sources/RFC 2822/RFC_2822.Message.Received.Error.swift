@@ -27,12 +27,16 @@ extension RFC_2822.Message.Received.Error {
         switch self {
         case .empty:
             return "Received field cannot be empty"
+
         case .missingSemicolon(let value):
             return "Received field must contain semicolon before timestamp: '\(value)'"
+
         case .missingTimestamp(let value):
             return "Received field must contain timestamp after semicolon: '\(value)'"
+
         case .invalidTimestamp(let error):
             return "Invalid timestamp in received field: \(error)"
+
         case .invalidNameValuePair(let error):
             return "Invalid name-value pair: \(error)"
         }

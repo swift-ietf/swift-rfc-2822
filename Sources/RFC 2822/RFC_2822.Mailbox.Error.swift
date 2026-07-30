@@ -41,12 +41,16 @@ extension RFC_2822.Mailbox.Error: CustomStringConvertible {
         switch self {
         case .empty:
             return "Mailbox cannot be empty"
+
         case .invalidFormat(let value):
             return "Invalid mailbox format '\(value)'"
+
         case .missingClosingAngleBracket(let value):
             return "Missing closing '>' in '\(value)'"
+
         case .invalidAddrSpec(let error):
             return "Invalid address: \(error)"
+
         case .invalidDisplayName(let value):
             return "Invalid display name (control byte or non-ASCII): '\(value)'"
         }

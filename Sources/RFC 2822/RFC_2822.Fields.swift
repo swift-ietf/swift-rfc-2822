@@ -408,14 +408,19 @@ extension RFC_2822.Fields.Error {
         switch self {
         case .empty:
             return "Fields cannot be empty"
+
         case .missingRequiredField(let fieldName):
             return "Missing required field: \(fieldName)"
+
         case .invalidFieldFormat(let fieldName, let value):
             return "Invalid format for field '\(fieldName)': '\(value)'"
+
         case .invalidMailbox(let error):
             return "Invalid mailbox: \(error)"
+
         case .invalidAddress(let error):
             return "Invalid address: \(error)"
+
         case .invalidMessageID(let error):
             return "Invalid message ID: \(error)"
         }

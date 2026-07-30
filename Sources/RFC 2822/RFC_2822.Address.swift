@@ -168,6 +168,7 @@ extension RFC_2822.Address: ASCII.Serializable, Binary.Serializable {
         switch address.kind {
         case .mailbox(let mailbox):
             RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
+
         case .group(let displayName, let mailboxes):
             preconditionGroupDisplayNameInjectionSafe(displayName)
             for byte in displayName.utf8 { buffer.append(ASCII.Code(byte)) }
@@ -196,6 +197,7 @@ extension RFC_2822.Address: ASCII.Serializable, Binary.Serializable {
         switch address.kind {
         case .mailbox(let mailbox):
             RFC_2822.Mailbox.serialize(mailbox, into: &buffer)
+
         case .group(let displayName, let mailboxes):
             preconditionGroupDisplayNameInjectionSafe(displayName)
             for byte in displayName.utf8 { buffer.append(Byte(byte)) }
@@ -236,12 +238,16 @@ extension RFC_2822.Address.Error {
         switch self {
         case .empty:
             return "Address cannot be empty"
+
         case .invalidMailbox(let error):
             return "Invalid mailbox: \(error)"
+
         case .invalidGroup(let value):
             return "Invalid group format: '\(value)'"
+
         case .missingGroupTerminator(let value):
             return "Missing ';' terminator in group: '\(value)'"
+
         case .invalidDisplayName(let value):
             return "Invalid group display name (control byte or non-ASCII): '\(value)'"
         }
@@ -454,6 +460,7 @@ extension RFC_2822.Address: CustomStringConvertible {
         switch kind {
         case .mailbox(let mailbox):
             return mailbox.description
+
         case .group(let displayName, let mailboxes):
             Self.preconditionGroupDisplayNameInjectionSafe(displayName)
             if mailboxes.isEmpty { return "\(displayName):;" }

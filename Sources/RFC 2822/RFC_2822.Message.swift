@@ -78,6 +78,7 @@ extension RFC_2822.Message.Error {
         switch self {
         case .empty:
             return "Message cannot be empty"
+
         case .invalidFields(let error):
             return "Invalid fields: \(error)"
         }

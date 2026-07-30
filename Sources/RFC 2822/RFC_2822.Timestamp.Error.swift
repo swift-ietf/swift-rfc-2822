@@ -27,12 +27,16 @@ extension RFC_2822.Timestamp.Error {
         switch self {
         case .empty:
             return "Timestamp cannot be empty"
+
         case .invalidFormat(let value):
             return "Invalid RFC 2822 date-time format: '\(value)'"
+
         case .invalidMonthName(let value):
             return "Invalid RFC 2822 month name: '\(value)'"
+
         case .invalidZone(let value):
             return "Invalid RFC 2822 zone: '\(value)'"
+
         case .invalidComponent(let field, let value):
             return "Invalid \(field) value: '\(value)'"
         }

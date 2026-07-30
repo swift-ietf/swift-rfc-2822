@@ -25,8 +25,10 @@ extension RFC_2822.Message.Path.Error {
         switch self {
         case .empty:
             return "Path cannot be empty"
+
         case .missingAngleBrackets(let value):
             return "Path must be enclosed in angle brackets: '\(value)'"
+
         case .invalidAddrSpec(let error):
             return "Invalid addr-spec in path: \(error)"
         }
