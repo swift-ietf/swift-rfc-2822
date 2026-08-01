@@ -390,43 +390,6 @@ extension RFC_2822.Fields: ASCII.Serializable, Binary.Serializable {
     }
 }
 
-extension RFC_2822.Fields {
-
-    /// Errors during fields parsing
-    public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
-        case empty
-        case missingRequiredField(_ fieldName: String)
-        case invalidFieldFormat(_ fieldName: String, _ value: String)
-        case invalidMailbox(RFC_2822.Mailbox.Error)
-        case invalidAddress(RFC_2822.Address.Error)
-        case invalidMessageID(RFC_2822.Message.ID.Error)
-    }
-}
-
-extension RFC_2822.Fields.Error {
-    public var description: String {
-        switch self {
-        case .empty:
-            return "Fields cannot be empty"
-
-        case .missingRequiredField(let fieldName):
-            return "Missing required field: \(fieldName)"
-
-        case .invalidFieldFormat(let fieldName, let value):
-            return "Invalid format for field '\(fieldName)': '\(value)'"
-
-        case .invalidMailbox(let error):
-            return "Invalid mailbox: \(error)"
-
-        case .invalidAddress(let error):
-            return "Invalid address: \(error)"
-
-        case .invalidMessageID(let error):
-            return "Invalid message ID: \(error)"
-        }
-    }
-}
-
 // MARK: - ASCII.Parseable ([FAM-012] parse — free-standing init; marker requirement seal-last)
 
 extension RFC_2822.Fields: ASCII.Parseable {
@@ -440,7 +403,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
     ///
     /// - Parameter bytes: The header fields as ASCII bytes
     /// - Throws: `Error` if parsing fails
-    public init<Bytes: Collection>(ascii bytes: Bytes) throws(Error)
+    public init<Bytes: Swift.Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -482,12 +445,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                 return false
             }
             guard codes.count == stringCodes.count else { return false }
-            for i in 0..<codes.count {
-                let c1 = codes[i].lowercased()
-                let c2 = stringCodes[i].lowercased()
-                guard c1 == c2 else { return false }
-            }
-            return true
+            return zip(codes, stringCodes).allSatisfy { $0.lowercased() == $1.lowercased() }
         }
 
         // Helper: split codes by separator, treating a `"..."` quoted-string

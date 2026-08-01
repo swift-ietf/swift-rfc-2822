@@ -117,7 +117,7 @@ extension RFC_2822.Message.ID: ASCII.Parseable {
     ///
     /// - Parameter bytes: The message ID as ASCII bytes
     /// - Throws: `Error` if parsing fails
-    public init<Bytes: Collection>(ascii bytes: Bytes) throws(Error)
+    public init<Bytes: Swift.Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -153,7 +153,7 @@ extension RFC_2822.Message.ID: ASCII.Parseable {
         }
 
         // Extract content between < and >
-        let contentCodes: [ASCII.Code] = Array(codeArray[1..<(codeArray.count - 1)])
+        let contentCodes: [ASCII.Code] = Array(codeArray.dropFirst().dropLast())
 
         // Find @ separator
         guard let atIndex = contentCodes.firstIndex(of: ASCII.Code.commercialAt) else {
@@ -171,13 +171,12 @@ extension RFC_2822.Message.ID: ASCII.Parseable {
         }
 
         let firstLeftCode = idLeftCodes[0]
-        let lastLeftCode = idLeftCodes[idLeftCodes.count - 1]
+        let lastLeftCode = idLeftCodes.last!
 
         if firstLeftCode == ASCII.Code.quotationMark && lastLeftCode == ASCII.Code.quotationMark {
             // no-fold-quote: DQUOTE *(qtext / quoted-pair) DQUOTE
             var isEscaped = false
-            for i in 1..<(idLeftCodes.count - 1) {
-                let code = idLeftCodes[i]
+            for code in idLeftCodes.dropFirst().dropLast() {
                 if isEscaped {
                     isEscaped = false
                 } else if code == ASCII.Code.reverseSolidus {
@@ -246,14 +245,13 @@ extension RFC_2822.Message.ID: ASCII.Parseable {
         }
 
         let firstRightCode = idRightCodes[0]
-        let lastRightCode = idRightCodes[idRightCodes.count - 1]
+        let lastRightCode = idRightCodes.last!
 
         if firstRightCode == ASCII.Code.leftSquareBracket
             && lastRightCode == ASCII.Code.rightSquareBracket
         {
             // no-fold-literal: "[" *dtext "]"
-            for i in 1..<(idRightCodes.count - 1) {
-                let code = idRightCodes[i]
+            for code in idRightCodes.dropFirst().dropLast() {
                 // dtext: printable ASCII except [ ] \
                 let isValidDText = (code >= 33 && code <= 90) || (code >= 94 && code <= 126)
                 guard isValidDText else {

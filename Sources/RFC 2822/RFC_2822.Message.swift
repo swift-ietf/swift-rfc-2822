@@ -63,28 +63,6 @@ extension RFC_2822.Message {
     }
 }
 
-// MARK: - Errors
-
-extension RFC_2822.Message {
-    /// Errors during message parsing
-    public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
-        case empty
-        case invalidFields(RFC_2822.Fields.Error)
-    }
-}
-
-extension RFC_2822.Message.Error {
-    public var description: String {
-        switch self {
-        case .empty:
-            return "Message cannot be empty"
-
-        case .invalidFields(let error):
-            return "Invalid fields: \(error)"
-        }
-    }
-}
-
 // MARK: - Binary.Serializable ([FAM-012] — Message is byte-domain, Binary-only)
 
 extension RFC_2822.Message: Binary.Serializable {
@@ -125,7 +103,7 @@ extension RFC_2822.Message {
     ///
     /// - Parameter bytes: The message as ASCII bytes
     /// - Throws: `Error` if parsing fails
-    public init<Bytes: Collection>(binary bytes: Bytes) throws(Error)
+    public init<Bytes: Swift.Collection>(binary bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 

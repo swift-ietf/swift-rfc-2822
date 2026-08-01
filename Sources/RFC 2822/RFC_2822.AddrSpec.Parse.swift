@@ -24,28 +24,9 @@ extension RFC_2822.AddrSpec {
     }
 }
 
-extension RFC_2822.AddrSpec.Parse {
-    public struct Output: Sendable {
-        public let localPart: Input
-        public let domain: Input
-
-        @inlinable
-        public init(localPart: Input, domain: Input) {
-            self.localPart = localPart
-            self.domain = domain
-        }
-    }
-
-    public enum Error: Swift.Error, Sendable, Equatable {
-        case empty
-        case missingAtSign
-        case emptyLocalPart
-        case emptyDomain
-    }
-}
-
 extension RFC_2822.AddrSpec.Parse: Parser.`Protocol` {
     public typealias Failure = RFC_2822.AddrSpec.Parse<Input>.Error
+    public typealias Body = Never
 
     @inlinable
     public func parse(_ input: inout Input) throws(Failure) -> Output {

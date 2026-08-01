@@ -89,10 +89,9 @@ extension RFC_2822.Mailbox {
     /// `ASCII.Serializable`/`Binary.Serializable` protocol shape)
     /// serializers never have to reject at write time.
     static func validateDisplayName(_ displayName: String) throws(Error) {
-        for scalar in displayName.unicodeScalars {
-            guard scalar.isASCII else { throw Error.invalidDisplayName(displayName) }
-            let value = scalar.value
-            guard value >= 0x20 && value != 0x7F else {
+        for byte in displayName.utf8 {
+            guard byte < 0x80 else { throw Error.invalidDisplayName(displayName) }
+            guard byte >= 0x20 && byte != 0x7F else {
                 throw Error.invalidDisplayName(displayName)
             }
         }
@@ -246,7 +245,7 @@ extension RFC_2822.Mailbox: ASCII.Parseable {
     ///
     /// - Parameter bytes: The mailbox as ASCII bytes
     /// - Throws: `Error` if parsing fails
-    public init<Bytes: Collection>(ascii bytes: Bytes) throws(Error)
+    public init<Bytes: Swift.Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -293,7 +292,7 @@ extension RFC_2822.Mailbox: ASCII.Parseable {
                 && trimmedDisplayNameCodes.last == ASCII.Code.quotationMark
             {
                 displayName = String(
-                    decoding: trimmedDisplayNameCodes[1..<(trimmedDisplayNameCodes.count - 1)],
+                    decoding: trimmedDisplayNameCodes.dropFirst().dropLast(),
                     as: UTF8.self
                 )
             }

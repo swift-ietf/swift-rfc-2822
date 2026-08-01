@@ -106,7 +106,7 @@ extension RFC_2822.Message.Path: ASCII.Parseable {
     ///
     /// - Parameter bytes: The path as ASCII bytes
     /// - Throws: `Error` if parsing fails
-    public init<Bytes: Collection>(ascii bytes: Bytes) throws(Error)
+    public init<Bytes: Swift.Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -142,7 +142,7 @@ extension RFC_2822.Message.Path: ASCII.Parseable {
         }
 
         // Extract content between < and > (as Byte for downstream AddrSpec init)
-        let contentBytes = [Byte](codeArray[1..<(codeArray.count - 1)])
+        let contentBytes = [Byte](codeArray.dropFirst().dropLast())
 
         // Empty path <> is valid
         if contentBytes.isEmpty {

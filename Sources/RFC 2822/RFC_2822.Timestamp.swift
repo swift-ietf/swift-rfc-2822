@@ -133,89 +133,6 @@ extension RFC_2822 {
     }
 }
 
-// MARK: - DayOfWeek
-
-extension RFC_2822.Timestamp {
-    /// The `day-name` token per RFC 2822 Section 3.3.
-    public enum DayOfWeek: Int, Sendable, Codable, Hashable, CaseIterable {
-        case monday, tuesday, wednesday, thursday, friday, saturday, sunday
-    }
-}
-
-extension RFC_2822.Timestamp.DayOfWeek {
-    /// The 3-letter wire token (`"Mon"` ... `"Sun"`).
-    public var abbreviation: String {
-        switch self {
-        case .monday: return "Mon"
-        case .tuesday: return "Tue"
-        case .wednesday: return "Wed"
-        case .thursday: return "Thu"
-        case .friday: return "Fri"
-        case .saturday: return "Sat"
-        case .sunday: return "Sun"
-        }
-    }
-}
-
-// MARK: - Month
-
-extension RFC_2822.Timestamp {
-    /// The `month-name` token per RFC 2822 Section 3.3.
-    public enum Month: Int, Sendable, Codable, Hashable, CaseIterable {
-        case january = 1
-        case february
-        case march
-        case april
-        case may
-        case june
-        case july
-        case august
-        case september
-        case october
-        case november
-        case december
-    }
-}
-
-extension RFC_2822.Timestamp.Month {
-    /// The 3-letter wire token (`"Jan"` ... `"Dec"`).
-    public var abbreviation: String {
-        switch self {
-        case .january: return "Jan"
-        case .february: return "Feb"
-        case .march: return "Mar"
-        case .april: return "Apr"
-        case .may: return "May"
-        case .june: return "Jun"
-        case .july: return "Jul"
-        case .august: return "Aug"
-        case .september: return "Sep"
-        case .october: return "Oct"
-        case .november: return "Nov"
-        case .december: return "Dec"
-        }
-    }
-}
-
-// MARK: - Zone
-
-extension RFC_2822.Timestamp {
-    /// The `zone` token per RFC 2822 Section 3.3.
-    ///
-    /// `-0000` (Section 3.3: "the time was generated on a system that may
-    /// be in a local time zone other than universal time and that the
-    /// date-time contains no information about the local time zone") and
-    /// the obsolete alphabetic/military zones (Section 4.3: "SHOULD all be
-    /// considered equivalent to '-0000'" — they are ambiguous) both parse
-    /// to `.unknown`: a zero numeric offset that explicitly disclaims
-    /// knowledge of the true local offset. `.offset` covers every other
-    /// zone, including an explicit, known `+0000` / `UT` / `GMT`.
-    public enum Zone: Sendable, Codable, Hashable {
-        case offset(minutes: Int)
-        case unknown
-    }
-}
-
 // MARK: - Proleptic Gregorian Calendar Conversion (Foundation-free)
 
 extension RFC_2822.Timestamp {
@@ -418,7 +335,7 @@ extension RFC_2822.Timestamp: ASCII.Parseable {
     ///
     /// - Parameter bytes: The timestamp as ASCII bytes
     /// - Throws: `Error` if parsing fails
-    public init<Bytes: Collection>(ascii bytes: Bytes) throws(Error)
+    public init<Bytes: Swift.Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 

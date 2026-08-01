@@ -201,7 +201,7 @@ extension RFC_2822.AddrSpec: ASCII.Parseable {
     ///
     /// - Parameter bytes: The addr-spec as ASCII bytes
     /// - Throws: `Error` if parsing or validation fails
-    public init<Bytes: Collection>(ascii bytes: Bytes) throws(Error)
+    public init<Bytes: Swift.Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -241,7 +241,7 @@ extension RFC_2822.AddrSpec {
     /// Validates a local-part per RFC 2822
     ///
     /// local-part = dot-atom / quoted-string
-    private static func validateLocalPart<Codes: Collection>(
+    private static func validateLocalPart<Codes: Swift.Collection>(
         _ codes: Codes
     ) throws(Error) where Codes.Element == ASCII.Code {
         guard let firstCode = codes.first else {
@@ -264,7 +264,7 @@ extension RFC_2822.AddrSpec {
     /// Validates a domain per RFC 2822
     ///
     /// domain = dot-atom / domain-literal
-    private static func validateDomain<Codes: Collection>(
+    private static func validateDomain<Codes: Swift.Collection>(
         _ codes: Codes
     ) throws(Error) where Codes.Element == ASCII.Code {
         guard let firstCode = codes.first else {
@@ -284,16 +284,10 @@ extension RFC_2822.AddrSpec {
         }
     }
 
-    /// Part being validated (for error context)
-    private enum Part {
-        case localPart
-        case domain
-    }
-
     /// Validates a dot-atom
     ///
     /// dot-atom-text = 1*atext *("." 1*atext)
-    private static func validateDotAtom<Codes: Collection>(
+    private static func validateDotAtom<Codes: Swift.Collection>(
         _ codes: Codes,
         for part: Part
     ) throws(Error) where Codes.Element == ASCII.Code {
@@ -334,7 +328,7 @@ extension RFC_2822.AddrSpec {
     /// quoted-string = DQUOTE *qcontent DQUOTE
     /// qcontent = qtext / quoted-pair
     /// qtext = NO-WS-CTL / %d33 / %d35-91 / %d93-126
-    private static func validateQuotedString<Codes: Collection>(
+    private static func validateQuotedString<Codes: Swift.Collection>(
         _ codes: Codes,
         for part: Part
     ) throws(Error) where Codes.Element == ASCII.Code {
@@ -379,7 +373,7 @@ extension RFC_2822.AddrSpec {
     /// domain-literal = "[" *dcontent "]"
     /// dcontent = dtext / quoted-pair
     /// dtext = NO-WS-CTL / %d33-90 / %d94-126
-    private static func validateDomainLiteral<Codes: Collection>(
+    private static func validateDomainLiteral<Codes: Swift.Collection>(
         _ codes: Codes
     ) throws(Error) where Codes.Element == ASCII.Code {
         var isEscaped = false
