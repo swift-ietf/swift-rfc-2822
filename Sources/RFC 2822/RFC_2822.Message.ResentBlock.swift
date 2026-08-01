@@ -351,7 +351,9 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
 
             switch fieldName {
             case "resent-date":
-                timestamp = Self.leniently { () throws(RFC_2822.Timestamp.Error) in try RFC_2822.Timestamp(ascii: fieldValueBytes) }
+                timestamp = Self.leniently { () throws(RFC_2822.Timestamp.Error) in
+                    try RFC_2822.Timestamp(ascii: fieldValueBytes)
+                }
 
             case "resent-from":
                 // Parse comma-separated mailboxes
@@ -368,7 +370,9 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                 }
 
             case "resent-sender":
-                sender = Self.leniently { () throws(RFC_2822.Mailbox.Error) in try RFC_2822.Mailbox(ascii: fieldValueBytes) }
+                sender = Self.leniently { () throws(RFC_2822.Mailbox.Error) in
+                    try RFC_2822.Mailbox(ascii: fieldValueBytes)
+                }
 
             case "resent-to":
                 var addresses: [RFC_2822.Address] = []
@@ -416,7 +420,9 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                 bcc = addresses.isEmpty ? nil : addresses
 
             case "resent-message-id":
-                messageID = Self.leniently { () throws(RFC_2822.Message.ID.Error) in try RFC_2822.Message.ID(ascii: fieldValueBytes) }
+                messageID = Self.leniently { () throws(RFC_2822.Message.ID.Error) in
+                    try RFC_2822.Message.ID(ascii: fieldValueBytes)
+                }
 
             default:
                 break
