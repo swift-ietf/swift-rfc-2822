@@ -8,134 +8,134 @@ extension RFC_2822.AddrSpec {
     struct Test {
         @Test
         func `Successfully creates valid addr-spec`() throws {
-            let addr = try RFC_2822.AddrSpec(ascii: Array("user@example.com".utf8))
+            let addr = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@example.com"))
             #expect(addr.localPart == "user")
             #expect(addr.domain == "example.com")
         }
 
         @Test
         func `Successfully creates addr-spec with subdomain`() throws {
-            let addr = try RFC_2822.AddrSpec(ascii: Array("user@mail.example.com".utf8))
+            let addr = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@mail.example.com"))
             #expect(addr.localPart == "user")
             #expect(addr.domain == "mail.example.com")
         }
 
         @Test
         func `Successfully creates addr-spec with dots in local part`() throws {
-            let addr = try RFC_2822.AddrSpec(ascii: Array("first.last@example.com".utf8))
+            let addr = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "first.last@example.com"))
             #expect(addr.localPart == "first.last")
         }
 
         @Test
         func `Successfully creates addr-spec with plus sign`() throws {
-            let addr = try RFC_2822.AddrSpec(ascii: Array("user+tag@example.com".utf8))
+            let addr = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user+tag@example.com"))
             #expect(addr.localPart == "user+tag")
         }
 
         @Test
         func `Successfully creates addr-spec with hyphen`() throws {
-            let addr = try RFC_2822.AddrSpec(ascii: Array("user-name@example.com".utf8))
+            let addr = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user-name@example.com"))
             #expect(addr.localPart == "user-name")
         }
 
         @Test
         func `Successfully creates addr-spec with quoted local part`() throws {
 
-            let addr = try RFC_2822.AddrSpec(ascii: Array("\"user.name\"@example.com".utf8))
+            let addr = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "\"user.name\"@example.com"))
             #expect(addr.localPart == "\"user.name\"")
         }
 
         @Test
         func `Successfully creates addr-spec with an at sign inside a quoted local part`() throws {
 
-            let addr = try RFC_2822.AddrSpec(ascii: Array("\"a@b\"@example.com".utf8))
+            let addr = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "\"a@b\"@example.com"))
             #expect(addr.localPart == "\"a@b\"")
             #expect(addr.domain == "example.com")
         }
 
         @Test
         func `Successfully creates addr-spec with domain literal`() throws {
-            let addr = try RFC_2822.AddrSpec(ascii: Array("user@[192.168.1.1]".utf8))
+            let addr = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@[192.168.1.1]"))
             #expect(addr.domain == "[192.168.1.1]")
         }
 
         @Test
         func `Fails with empty input`() throws {
             #expect(throws: RFC_2822.AddrSpec.Error.empty) {
-                _ = try RFC_2822.AddrSpec(ascii: Array("".utf8))
+                _ = try RFC_2822.AddrSpec(ascii: [Byte](utf8: ""))
             }
         }
 
         @Test
         func `Fails with missing @ sign`() throws {
             #expect(throws: RFC_2822.AddrSpec.Error.self) {
-                _ = try RFC_2822.AddrSpec(ascii: Array("userexample.com".utf8))
+                _ = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "userexample.com"))
             }
         }
 
         @Test
         func `Fails with empty local part`() throws {
             #expect(throws: RFC_2822.AddrSpec.Error.self) {
-                _ = try RFC_2822.AddrSpec(ascii: Array("@example.com".utf8))
+                _ = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "@example.com"))
             }
         }
 
         @Test
         func `Fails with empty domain`() throws {
             #expect(throws: RFC_2822.AddrSpec.Error.self) {
-                _ = try RFC_2822.AddrSpec(ascii: Array("user@".utf8))
+                _ = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@"))
             }
         }
 
         @Test
         func `Fails with local part starting with dot`() throws {
             #expect(throws: RFC_2822.AddrSpec.Error.self) {
-                _ = try RFC_2822.AddrSpec(ascii: Array(".user@example.com".utf8))
+                _ = try RFC_2822.AddrSpec(ascii: [Byte](utf8: ".user@example.com"))
             }
         }
 
         @Test
         func `Fails with local part ending with dot`() throws {
             #expect(throws: RFC_2822.AddrSpec.Error.self) {
-                _ = try RFC_2822.AddrSpec(ascii: Array("user.@example.com".utf8))
+                _ = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user.@example.com"))
             }
         }
 
         @Test
         func `Fails with consecutive dots in local part`() throws {
             #expect(throws: RFC_2822.AddrSpec.Error.self) {
-                _ = try RFC_2822.AddrSpec(ascii: Array("user..name@example.com".utf8))
+                _ = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user..name@example.com"))
             }
         }
 
         @Test
         func `Successfully tests equality`() throws {
-            let addr1 = try RFC_2822.AddrSpec(ascii: Array("user@example.com".utf8))
-            let addr2 = try RFC_2822.AddrSpec(ascii: Array("user@example.com".utf8))
-            let addr3 = try RFC_2822.AddrSpec(ascii: Array("other@example.com".utf8))
+            let addr1 = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@example.com"))
+            let addr2 = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@example.com"))
+            let addr3 = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "other@example.com"))
             #expect(addr1 == addr2)
             #expect(addr1 != addr3)
         }
 
         @Test
         func `Successfully tests case-insensitive domain equality`() throws {
-            let addr1 = try RFC_2822.AddrSpec(ascii: Array("user@EXAMPLE.COM".utf8))
-            let addr2 = try RFC_2822.AddrSpec(ascii: Array("user@example.com".utf8))
+            let addr1 = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@EXAMPLE.COM"))
+            let addr2 = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@example.com"))
             #expect(addr1 == addr2)
         }
 
         @Test
         func `Successfully tests hashable`() throws {
             var set: Set<RFC_2822.AddrSpec> = []
-            set.insert(try RFC_2822.AddrSpec(ascii: Array("user@example.com".utf8)))
-            set.insert(try RFC_2822.AddrSpec(ascii: Array("user@example.com".utf8)))
-            set.insert(try RFC_2822.AddrSpec(ascii: Array("other@example.com".utf8)))
+            set.insert(try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@example.com")))
+            set.insert(try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@example.com")))
+            set.insert(try RFC_2822.AddrSpec(ascii: [Byte](utf8: "other@example.com")))
             #expect(set.count == 2)
         }
 
         @Test
         func `Successfully encodes and decodes`() throws {
-            let original = try RFC_2822.AddrSpec(ascii: Array("user@example.com".utf8))
+            let original = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@example.com"))
             let encoded = try JSONEncoder().encode(original)
             let decoded = try JSONDecoder().decode(RFC_2822.AddrSpec.self, from: encoded)
             #expect(original == decoded)
@@ -143,7 +143,7 @@ extension RFC_2822.AddrSpec {
 
         @Test
         func `Successfully serializes to string`() throws {
-            let addr = try RFC_2822.AddrSpec(ascii: Array("user@example.com".utf8))
+            let addr = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@example.com"))
             #expect(String(addr) == "user@example.com")
         }
     }
@@ -201,7 +201,7 @@ extension RFC_2822.Mailbox {
     struct Test {
         @Test
         func `Successfully creates mailbox with just addr-spec`() throws {
-            let mailbox = try RFC_2822.Mailbox(ascii: Array("user@example.com".utf8))
+            let mailbox = try RFC_2822.Mailbox(ascii: [Byte](utf8: "user@example.com"))
             #expect(mailbox.displayName == nil)
             #expect(mailbox.emailAddress.localPart == "user")
             #expect(mailbox.emailAddress.domain == "example.com")
@@ -209,7 +209,7 @@ extension RFC_2822.Mailbox {
 
         @Test
         func `Successfully creates mailbox with display name`() throws {
-            let mailbox = try RFC_2822.Mailbox(ascii: Array("John Doe <john@example.com>".utf8))
+            let mailbox = try RFC_2822.Mailbox(ascii: [Byte](utf8: "John Doe <john@example.com>"))
             #expect(mailbox.displayName == "John Doe")
             #expect(mailbox.emailAddress.localPart == "john")
         }
@@ -217,7 +217,7 @@ extension RFC_2822.Mailbox {
         @Test
         func `Successfully creates mailbox with quoted display name`() throws {
             let mailbox = try RFC_2822.Mailbox(
-                ascii: Array("\"John Q. Doe\" <john@example.com>".utf8)
+                ascii: [Byte](utf8: "\"John Q. Doe\" <john@example.com>")
             )
             #expect(mailbox.displayName == "John Q. Doe")
         }
@@ -225,22 +225,22 @@ extension RFC_2822.Mailbox {
         @Test
         func `Fails with empty input`() throws {
             #expect(throws: RFC_2822.Mailbox.Error.empty) {
-                _ = try RFC_2822.Mailbox(ascii: Array("".utf8))
+                _ = try RFC_2822.Mailbox(ascii: [Byte](utf8: ""))
             }
         }
 
         @Test
         func `Fails with missing closing angle bracket`() throws {
             #expect(throws: RFC_2822.Mailbox.Error.self) {
-                _ = try RFC_2822.Mailbox(ascii: Array("John <john@example.com".utf8))
+                _ = try RFC_2822.Mailbox(ascii: [Byte](utf8: "John <john@example.com"))
             }
         }
 
         @Test
         func `Successfully tests equality`() throws {
-            let m1 = try RFC_2822.Mailbox(ascii: Array("John <john@example.com>".utf8))
-            let m2 = try RFC_2822.Mailbox(ascii: Array("John <john@example.com>".utf8))
-            let m3 = try RFC_2822.Mailbox(ascii: Array("Jane <jane@example.com>".utf8))
+            let m1 = try RFC_2822.Mailbox(ascii: [Byte](utf8: "John <john@example.com>"))
+            let m2 = try RFC_2822.Mailbox(ascii: [Byte](utf8: "John <john@example.com>"))
+            let m3 = try RFC_2822.Mailbox(ascii: [Byte](utf8: "Jane <jane@example.com>"))
             #expect(m1 == m2)
             #expect(m1 != m3)
         }
@@ -248,15 +248,15 @@ extension RFC_2822.Mailbox {
         @Test
         func `Successfully tests hashable`() throws {
             var set: Set<RFC_2822.Mailbox> = []
-            set.insert(try RFC_2822.Mailbox(ascii: Array("john@example.com".utf8)))
-            set.insert(try RFC_2822.Mailbox(ascii: Array("john@example.com".utf8)))
-            set.insert(try RFC_2822.Mailbox(ascii: Array("jane@example.com".utf8)))
+            set.insert(try RFC_2822.Mailbox(ascii: [Byte](utf8: "john@example.com")))
+            set.insert(try RFC_2822.Mailbox(ascii: [Byte](utf8: "john@example.com")))
+            set.insert(try RFC_2822.Mailbox(ascii: [Byte](utf8: "jane@example.com")))
             #expect(set.count == 2)
         }
 
         @Test
         func `Successfully encodes and decodes`() throws {
-            let original = try RFC_2822.Mailbox(ascii: Array("John <john@example.com>".utf8))
+            let original = try RFC_2822.Mailbox(ascii: [Byte](utf8: "John <john@example.com>"))
             let encoded = try JSONEncoder().encode(original)
             let decoded = try JSONDecoder().decode(RFC_2822.Mailbox.self, from: encoded)
             #expect(original == decoded)
@@ -264,7 +264,7 @@ extension RFC_2822.Mailbox {
 
         @Test
         func `Successfully serializes to string`() throws {
-            let mailbox = try RFC_2822.Mailbox(ascii: Array("John <john@example.com>".utf8))
+            let mailbox = try RFC_2822.Mailbox(ascii: [Byte](utf8: "John <john@example.com>"))
             let serialized = String(mailbox)
             #expect(serialized.contains("john@example.com"))
         }
@@ -310,7 +310,7 @@ extension RFC_2822.Mailbox.Test {
 
             let malicious = "Evil\r\nBcc: attacker@evil.example <john@example.com>"
             #expect(throws: RFC_2822.Mailbox.Error.self) {
-                _ = try RFC_2822.Mailbox(ascii: Array(malicious.utf8))
+                _ = try RFC_2822.Mailbox(ascii: [Byte](utf8: malicious))
             }
         }
 
@@ -412,7 +412,7 @@ extension RFC_2822.Address {
     struct Test {
         @Test
         func `Successfully creates mailbox address`() throws {
-            let address = try RFC_2822.Address(ascii: Array("user@example.com".utf8))
+            let address = try RFC_2822.Address(ascii: [Byte](utf8: "user@example.com"))
             if case .mailbox(let mailbox) = address.kind {
                 #expect(mailbox.emailAddress.localPart == "user")
             } else {
@@ -423,7 +423,7 @@ extension RFC_2822.Address {
         @Test
         func `Successfully creates group address`() throws {
             let address = try RFC_2822.Address(
-                ascii: Array("Team: john@example.com, jane@example.com;".utf8)
+                ascii: [Byte](utf8: "Team: john@example.com, jane@example.com;")
             )
             if case .group(let name, let mailboxes) = address.kind {
                 #expect(name == "Team")
@@ -435,7 +435,7 @@ extension RFC_2822.Address {
 
         @Test
         func `Successfully creates empty group`() throws {
-            let address = try RFC_2822.Address(ascii: Array("Empty Group:;".utf8))
+            let address = try RFC_2822.Address(ascii: [Byte](utf8: "Empty Group:;"))
             if case .group(let name, let mailboxes) = address.kind {
                 #expect(name == "Empty Group")
                 #expect(mailboxes.isEmpty)
@@ -447,29 +447,29 @@ extension RFC_2822.Address {
         @Test
         func `Fails with empty input`() throws {
             #expect(throws: RFC_2822.Address.Error.empty) {
-                _ = try RFC_2822.Address(ascii: Array("".utf8))
+                _ = try RFC_2822.Address(ascii: [Byte](utf8: ""))
             }
         }
 
         @Test
         func `Fails with missing group terminator`() throws {
             #expect(throws: RFC_2822.Address.Error.self) {
-                _ = try RFC_2822.Address(ascii: Array("Team: john@example.com".utf8))
+                _ = try RFC_2822.Address(ascii: [Byte](utf8: "Team: john@example.com"))
             }
         }
 
         @Test
         func `Successfully tests equality`() throws {
-            let a1 = try RFC_2822.Address(ascii: Array("user@example.com".utf8))
-            let a2 = try RFC_2822.Address(ascii: Array("user@example.com".utf8))
-            let a3 = try RFC_2822.Address(ascii: Array("other@example.com".utf8))
+            let a1 = try RFC_2822.Address(ascii: [Byte](utf8: "user@example.com"))
+            let a2 = try RFC_2822.Address(ascii: [Byte](utf8: "user@example.com"))
+            let a3 = try RFC_2822.Address(ascii: [Byte](utf8: "other@example.com"))
             #expect(a1 == a2)
             #expect(a1 != a3)
         }
 
         @Test
         func `Successfully encodes and decodes`() throws {
-            let original = try RFC_2822.Address(ascii: Array("user@example.com".utf8))
+            let original = try RFC_2822.Address(ascii: [Byte](utf8: "user@example.com"))
             let encoded = try JSONEncoder().encode(original)
             let decoded = try JSONDecoder().decode(RFC_2822.Address.self, from: encoded)
             #expect(original == decoded)
@@ -484,7 +484,7 @@ extension RFC_2822.Address.Test {
         @Test
         func `Parses a bare mailbox whose quoted display name contains a colon`() throws {
             let address = try RFC_2822.Address(
-                ascii: Array("\"Time: 5pm\" <john@example.com>".utf8)
+                ascii: [Byte](utf8: "\"Time: 5pm\" <john@example.com>")
             )
             guard case .mailbox(let mailbox) = address.kind else {
                 Issue.record("Expected a mailbox address, got a group")
@@ -497,7 +497,7 @@ extension RFC_2822.Address.Test {
         @Test
         func `Still parses a real group when the display name has no colon`() throws {
             let address = try RFC_2822.Address(
-                ascii: Array("Team: john@example.com, jane@example.com;".utf8)
+                ascii: [Byte](utf8: "Team: john@example.com, jane@example.com;")
             )
             guard case .group(let name, let mailboxes) = address.kind else {
                 Issue.record("Expected a group address, got a mailbox")
@@ -515,7 +515,7 @@ extension RFC_2822.Address.Test {
 
             let malicious = "Evil\r\nBcc-attacker-evil-example:john@example.com;"
             #expect(throws: RFC_2822.Address.Error.self) {
-                _ = try RFC_2822.Address(ascii: Array(malicious.utf8))
+                _ = try RFC_2822.Address(ascii: [Byte](utf8: malicious))
             }
         }
 
@@ -634,8 +634,8 @@ extension RFC_2822.Message.ID {
         func `ASCII and Binary serialization are byte-equivalent`() throws {
 
             let ids = [
-                try RFC_2822.Message.ID(ascii: Array("<unique-id@example.com>".utf8)),
-                try RFC_2822.Message.ID(ascii: Array("<abc.def.123@mail.example.com>".utf8)),
+                try RFC_2822.Message.ID(ascii: [Byte](utf8: "<unique-id@example.com>")),
+                try RFC_2822.Message.ID(ascii: [Byte](utf8: "<abc.def.123@mail.example.com>")),
                 RFC_2822.Message.ID(idLeft: "plain", idRight: "host.example"),
             ]
             for id in ids {
@@ -659,21 +659,21 @@ extension RFC_2822.Message.ID {
 
         @Test
         func `Successfully creates valid message ID`() throws {
-            let id = try RFC_2822.Message.ID(ascii: Array("<unique-id@example.com>".utf8))
+            let id = try RFC_2822.Message.ID(ascii: [Byte](utf8: "<unique-id@example.com>"))
             #expect(id.idLeft == "unique-id")
             #expect(id.idRight == "example.com")
         }
 
         @Test
         func `Successfully creates message ID with dots`() throws {
-            let id = try RFC_2822.Message.ID(ascii: Array("<abc.def.123@mail.example.com>".utf8))
+            let id = try RFC_2822.Message.ID(ascii: [Byte](utf8: "<abc.def.123@mail.example.com>"))
             #expect(id.idLeft == "abc.def.123")
             #expect(id.idRight == "mail.example.com")
         }
 
         @Test
         func `Successfully creates message ID with whitespace around it`() throws {
-            let id = try RFC_2822.Message.ID(ascii: Array("  <id@example.com>  ".utf8))
+            let id = try RFC_2822.Message.ID(ascii: [Byte](utf8: "  <id@example.com>  "))
             #expect(id.idLeft == "id")
             #expect(id.idRight == "example.com")
         }
@@ -681,66 +681,66 @@ extension RFC_2822.Message.ID {
         @Test
         func `Fails with empty input`() throws {
             #expect(throws: RFC_2822.Message.ID.Error.empty) {
-                _ = try RFC_2822.Message.ID(ascii: Array("".utf8))
+                _ = try RFC_2822.Message.ID(ascii: [Byte](utf8: ""))
             }
         }
 
         @Test
         func `Fails with missing angle brackets`() throws {
             #expect(throws: RFC_2822.Message.ID.Error.self) {
-                _ = try RFC_2822.Message.ID(ascii: Array("id@example.com".utf8))
+                _ = try RFC_2822.Message.ID(ascii: [Byte](utf8: "id@example.com"))
             }
         }
 
         @Test
         func `Fails with missing @ sign`() throws {
             #expect(throws: RFC_2822.Message.ID.Error.self) {
-                _ = try RFC_2822.Message.ID(ascii: Array("<idexample.com>".utf8))
+                _ = try RFC_2822.Message.ID(ascii: [Byte](utf8: "<idexample.com>"))
             }
         }
 
         @Test
         func `Fails with empty id-left`() throws {
             #expect(throws: RFC_2822.Message.ID.Error.self) {
-                _ = try RFC_2822.Message.ID(ascii: Array("<@example.com>".utf8))
+                _ = try RFC_2822.Message.ID(ascii: [Byte](utf8: "<@example.com>"))
             }
         }
 
         @Test
         func `Fails with empty id-right`() throws {
             #expect(throws: RFC_2822.Message.ID.Error.self) {
-                _ = try RFC_2822.Message.ID(ascii: Array("<id@>".utf8))
+                _ = try RFC_2822.Message.ID(ascii: [Byte](utf8: "<id@>"))
             }
         }
 
         @Test
         func `Successfully tests equality`() throws {
-            let id1 = try RFC_2822.Message.ID(ascii: Array("<id@example.com>".utf8))
-            let id2 = try RFC_2822.Message.ID(ascii: Array("<id@example.com>".utf8))
-            let id3 = try RFC_2822.Message.ID(ascii: Array("<other@example.com>".utf8))
+            let id1 = try RFC_2822.Message.ID(ascii: [Byte](utf8: "<id@example.com>"))
+            let id2 = try RFC_2822.Message.ID(ascii: [Byte](utf8: "<id@example.com>"))
+            let id3 = try RFC_2822.Message.ID(ascii: [Byte](utf8: "<other@example.com>"))
             #expect(id1 == id2)
             #expect(id1 != id3)
         }
 
         @Test
         func `Successfully tests case-insensitive id-right`() throws {
-            let id1 = try RFC_2822.Message.ID(ascii: Array("<id@EXAMPLE.COM>".utf8))
-            let id2 = try RFC_2822.Message.ID(ascii: Array("<id@example.com>".utf8))
+            let id1 = try RFC_2822.Message.ID(ascii: [Byte](utf8: "<id@EXAMPLE.COM>"))
+            let id2 = try RFC_2822.Message.ID(ascii: [Byte](utf8: "<id@example.com>"))
             #expect(id1 == id2)
         }
 
         @Test
         func `Successfully tests hashable`() throws {
             var set: Set<RFC_2822.Message.ID> = []
-            set.insert(try RFC_2822.Message.ID(ascii: Array("<id@example.com>".utf8)))
-            set.insert(try RFC_2822.Message.ID(ascii: Array("<id@example.com>".utf8)))
-            set.insert(try RFC_2822.Message.ID(ascii: Array("<other@example.com>".utf8)))
+            set.insert(try RFC_2822.Message.ID(ascii: [Byte](utf8: "<id@example.com>")))
+            set.insert(try RFC_2822.Message.ID(ascii: [Byte](utf8: "<id@example.com>")))
+            set.insert(try RFC_2822.Message.ID(ascii: [Byte](utf8: "<other@example.com>")))
             #expect(set.count == 2)
         }
 
         @Test
         func `Successfully encodes and decodes`() throws {
-            let original = try RFC_2822.Message.ID(ascii: Array("<id@example.com>".utf8))
+            let original = try RFC_2822.Message.ID(ascii: [Byte](utf8: "<id@example.com>"))
             let encoded = try JSONEncoder().encode(original)
             let decoded = try JSONDecoder().decode(RFC_2822.Message.ID.self, from: encoded)
             #expect(original == decoded)
@@ -748,7 +748,7 @@ extension RFC_2822.Message.ID {
 
         @Test
         func `Successfully serializes to string`() throws {
-            let id = try RFC_2822.Message.ID(ascii: Array("<unique-id@example.com>".utf8))
+            let id = try RFC_2822.Message.ID(ascii: [Byte](utf8: "<unique-id@example.com>"))
             #expect(String(id) == "<unique-id@example.com>")
         }
     }
@@ -787,7 +787,7 @@ extension RFC_2822.Timestamp {
         @Test
         func `Successfully parses timestamp from bytes`() throws {
             let timestamp = try RFC_2822.Timestamp(
-                ascii: Array("Fri, 13 Feb 2009 23:31:30 +0000".utf8)
+                ascii: [Byte](utf8: "Fri, 13 Feb 2009 23:31:30 +0000")
             )
             #expect(timestamp.secondsSinceEpoch == 1234567890.0)
         }
@@ -795,7 +795,7 @@ extension RFC_2822.Timestamp {
         @Test
         func `Successfully parses timestamp with whitespace`() throws {
             let timestamp = try RFC_2822.Timestamp(
-                ascii: Array("  Fri, 13 Feb 2009 23:31:30 +0000  ".utf8)
+                ascii: [Byte](utf8: "  Fri, 13 Feb 2009 23:31:30 +0000  ")
             )
             #expect(timestamp.secondsSinceEpoch == 1234567890.0)
         }
@@ -803,14 +803,14 @@ extension RFC_2822.Timestamp {
         @Test
         func `Fails with empty input`() throws {
             #expect(throws: RFC_2822.Timestamp.Error.empty) {
-                _ = try RFC_2822.Timestamp(ascii: Array("".utf8))
+                _ = try RFC_2822.Timestamp(ascii: [Byte](utf8: ""))
             }
         }
 
         @Test
         func `Fails with invalid format`() throws {
             #expect(throws: RFC_2822.Timestamp.Error.self) {
-                _ = try RFC_2822.Timestamp(ascii: Array("not-a-number".utf8))
+                _ = try RFC_2822.Timestamp(ascii: [Byte](utf8: "not-a-number"))
             }
         }
 
@@ -833,7 +833,7 @@ extension RFC_2822.Timestamp.Test {
             throws
         {
             let timestamp = try RFC_2822.Timestamp(
-                ascii: Array("Fri, 21 Nov 1997 09:55:06 -0600".utf8)
+                ascii: [Byte](utf8: "Fri, 21 Nov 1997 09:55:06 -0600")
             )
             #expect(timestamp.secondsSinceEpoch == 880127706.0)
             #expect(timestamp.dayOfWeek == .friday)
@@ -861,7 +861,7 @@ extension RFC_2822.Timestamp.Test {
 
         @Test
         func `Applies obs-year two-digit century normalization`() throws {
-            let timestamp = try RFC_2822.Timestamp(ascii: Array("21 Nov 97 09:55:06 GMT".utf8))
+            let timestamp = try RFC_2822.Timestamp(ascii: [Byte](utf8: "21 Nov 97 09:55:06 GMT"))
             #expect(timestamp.year == 1997)
             #expect(timestamp.secondsSinceEpoch == 880106106.0)
         }
@@ -870,14 +870,14 @@ extension RFC_2822.Timestamp.Test {
         func `Treats an unrecognized single-letter obs-zone as unknown, equivalent to -0000`()
             throws
         {
-            let timestamp = try RFC_2822.Timestamp(ascii: Array("21 Nov 1997 09:55:06 Z".utf8))
+            let timestamp = try RFC_2822.Timestamp(ascii: [Byte](utf8: "21 Nov 1997 09:55:06 Z"))
             #expect(timestamp.zone == .unknown)
         }
 
         @Test
         func `Treats -0000 as unknown but +0000 as a known UTC offset`() throws {
-            let unknown = try RFC_2822.Timestamp(ascii: Array("21 Nov 1997 09:55:06 -0000".utf8))
-            let known = try RFC_2822.Timestamp(ascii: Array("21 Nov 1997 09:55:06 +0000".utf8))
+            let unknown = try RFC_2822.Timestamp(ascii: [Byte](utf8: "21 Nov 1997 09:55:06 -0000"))
+            let known = try RFC_2822.Timestamp(ascii: [Byte](utf8: "21 Nov 1997 09:55:06 +0000"))
             #expect(unknown.zone == .unknown)
             #expect(known.zone == .offset(minutes: 0))
 
@@ -887,7 +887,7 @@ extension RFC_2822.Timestamp.Test {
         @Test
         func `Rejects a bare numeric epoch string (the pre-fix wire form)`() throws {
             #expect(throws: RFC_2822.Timestamp.Error.self) {
-                _ = try RFC_2822.Timestamp(ascii: Array("1234567890".utf8))
+                _ = try RFC_2822.Timestamp(ascii: [Byte](utf8: "1234567890"))
             }
         }
     }
@@ -900,7 +900,7 @@ extension RFC_2822.Timestamp.Test {
         @Test
         func `Mailgun canonical UTC form round-trips byte-identically`() throws {
             let wire = "Fri, 13 Feb 2009 23:31:30 +0000"
-            let parsed = try RFC_2822.Timestamp(ascii: Array(wire.utf8))
+            let parsed = try RFC_2822.Timestamp(ascii: [Byte](utf8: wire))
             #expect(parsed.description == wire)
             var bytes: [Byte] = []
             RFC_2822.Timestamp.serialize(parsed, into: &bytes)
@@ -910,10 +910,10 @@ extension RFC_2822.Timestamp.Test {
         @Test
         func `Mailgun-shaped non-UTC offset form round-trips byte-identically`() throws {
             let wire = "Thu, 13 Oct 2011 18:02:00 +0200"
-            let parsed = try RFC_2822.Timestamp(ascii: Array(wire.utf8))
+            let parsed = try RFC_2822.Timestamp(ascii: [Byte](utf8: wire))
             #expect(parsed.description == wire)
             #expect(parsed.zone == .offset(minutes: 120))
-            let reparsed = try RFC_2822.Timestamp(ascii: Array(parsed.description.utf8))
+            let reparsed = try RFC_2822.Timestamp(ascii: [Byte](utf8: parsed.description))
             #expect(reparsed == parsed)
         }
 
@@ -971,7 +971,7 @@ extension RFC_2822.Fields {
         func `Successfully parses fields from bytes`() throws {
             let raw =
                 "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: sender@example.com\r\nSubject: Test"
-            let fields = try RFC_2822.Fields(ascii: Array(raw.utf8))
+            let fields = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
             #expect(fields.subject == "Test")
             #expect(fields.from.count == 1)
             #expect(fields.originationDate.secondsSinceEpoch == 1234567890.0)
@@ -980,7 +980,7 @@ extension RFC_2822.Fields {
         @Test
         func `Fails with empty input`() throws {
             #expect(throws: RFC_2822.Fields.Error.empty) {
-                _ = try RFC_2822.Fields(ascii: Array("".utf8))
+                _ = try RFC_2822.Fields(ascii: [Byte](utf8: ""))
             }
         }
 
@@ -988,7 +988,7 @@ extension RFC_2822.Fields {
         func `Fails with missing Date field`() throws {
             let raw = "From: sender@example.com\r\n"
             #expect(throws: RFC_2822.Fields.Error.self) {
-                _ = try RFC_2822.Fields(ascii: Array(raw.utf8))
+                _ = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
             }
         }
 
@@ -996,7 +996,7 @@ extension RFC_2822.Fields {
         func `Fails with missing From field`() throws {
             let raw = "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\n"
             #expect(throws: RFC_2822.Fields.Error.self) {
-                _ = try RFC_2822.Fields(ascii: Array(raw.utf8))
+                _ = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
             }
         }
 
@@ -1059,7 +1059,7 @@ extension RFC_2822.Fields.Test {
         func `Parses a single From mailbox whose quoted display name contains a comma`() throws {
             let raw =
                 "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: \"Doe, John\" <john@example.com>\r\n"
-            let fields = try RFC_2822.Fields(ascii: Array(raw.utf8))
+            let fields = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
             #expect(fields.from.count == 1)
             #expect(fields.from.first?.displayName == "Doe, John")
             #expect(fields.from.first?.emailAddress.localPart == "john")
@@ -1072,7 +1072,7 @@ extension RFC_2822.Fields.Test {
             let raw =
                 "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: sender@example.com\r\n"
                 + "To: \"Doe, John\" <john@example.com>, \"Roe, Jane\" <jane@example.com>\r\n"
-            let fields = try RFC_2822.Fields(ascii: Array(raw.utf8))
+            let fields = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
             #expect(fields.to?.count == 2)
         }
     }
@@ -1121,7 +1121,7 @@ extension RFC_2822.Message {
         func `Successfully parses message from bytes`() throws {
             let raw =
                 "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: sender@example.com\r\nSubject: Test\r\n\r\nThis is the body."
-            let message = try RFC_2822.Message(binary: Array(raw.utf8))
+            let message = try RFC_2822.Message(binary: [Byte](utf8: raw))
             #expect(message.fields.subject == "Test")
             #expect(message.body != nil)
         }
@@ -1129,14 +1129,14 @@ extension RFC_2822.Message {
         @Test
         func `Successfully parses message without body`() throws {
             let raw = "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: sender@example.com"
-            let message = try RFC_2822.Message(binary: Array(raw.utf8))
+            let message = try RFC_2822.Message(binary: [Byte](utf8: raw))
             #expect(message.body == nil)
         }
 
         @Test
         func `Fails with empty input`() throws {
             #expect(throws: RFC_2822.Message.Error.empty) {
-                _ = try RFC_2822.Message(binary: Array("".utf8))
+                _ = try RFC_2822.Message(binary: [Byte](utf8: ""))
             }
         }
 
@@ -1194,7 +1194,7 @@ extension RFC_2822.Message.Body {
 
         @Test
         func `Successfully creates body from bytes`() {
-            let bytes: [Byte] = [72, 101, 108, 108, 111]
+            let bytes = [Byte](utf8: "Hello")
             let body = RFC_2822.Message.Body(bytes)
             #expect(body.bytes == bytes)
         }
@@ -1207,7 +1207,7 @@ extension RFC_2822.Message.Body {
 
         @Test
         func `Successfully parses body from raw bytes`() {
-            let body = RFC_2822.Message.Body(binary: Array("Test content".utf8))
+            let body = RFC_2822.Message.Body(binary: [Byte](utf8: "Test content"))
             #expect(String(body) == "Test content")
         }
 
@@ -1336,7 +1336,7 @@ struct ASCIIBinaryEquivalenceTests {
             from: [try mailbox()],
             sender: try mailbox(),
             to: [RFC_2822.Address(.mailbox(try mailbox()))],
-            messageID: try RFC_2822.Message.ID(ascii: Array("<id@example.com>".utf8)),
+            messageID: try RFC_2822.Message.ID(ascii: [Byte](utf8: "<id@example.com>")),
             subject: "Re: hello"
         )
         var ascii: [ASCII.Code] = []

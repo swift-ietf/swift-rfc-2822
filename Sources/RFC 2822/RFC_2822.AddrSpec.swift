@@ -27,7 +27,7 @@ extension RFC_2822 {
             }
             let localCodes: [ASCII.Code]
             do throws(ASCII.Code.Error) {
-                localCodes = try [ASCII.Code](localPart.utf8)
+                localCodes = try [Byte](utf8: localPart).map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
             } catch {
                 throw Error.invalidLocalPart(localPart)
             }
@@ -38,7 +38,7 @@ extension RFC_2822 {
             }
             let domainCodes: [ASCII.Code]
             do throws(ASCII.Code.Error) {
-                domainCodes = try [ASCII.Code](domain.utf8)
+                domainCodes = try [Byte](utf8: domain).map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
             } catch {
                 throw Error.invalidDomain(domain)
             }
@@ -180,28 +180,28 @@ extension RFC_2822.AddrSpec {
         for part: Part
     ) throws(Error) where Codes.Element == ASCII.Code {
         guard let firstCode = codes.first else {
-            throw errorFor(part, String(decoding: codes, as: UTF8.self))
+            throw errorFor(part, String(ascii: codes))
         }
 
         var lastCode = firstCode
         for code in codes { lastCode = code }
 
         guard firstCode != ASCII.Code.period && lastCode != ASCII.Code.period else {
-            throw errorFor(part, String(decoding: codes, as: UTF8.self))
+            throw errorFor(part, String(ascii: codes))
         }
 
         var previousCode: ASCII.Code = ASCII.Code(0)
         for code in codes {
 
             if code == ASCII.Code.period && previousCode == ASCII.Code.period {
-                throw errorFor(part, String(decoding: codes, as: UTF8.self))
+                throw errorFor(part, String(ascii: codes))
             }
             previousCode = code
 
             if code == ASCII.Code.period { continue }
 
             guard RFC_2822.isAtext(code) else {
-                throw errorFor(part, String(decoding: codes, as: UTF8.self))
+                throw errorFor(part, String(ascii: codes))
             }
         }
     }
@@ -235,13 +235,13 @@ extension RFC_2822.AddrSpec {
                     || (code >= 14 && code <= 31) || code == 33 || (code >= 35 && code <= 91)
                     || (code >= 93 && code <= 126)
                 guard isValidQText else {
-                    throw errorFor(part, String(decoding: codes, as: UTF8.self))
+                    throw errorFor(part, String(ascii: codes))
                 }
             }
         }
 
         if isEscaped {
-            throw errorFor(part, String(decoding: codes, as: UTF8.self))
+            throw errorFor(part, String(ascii: codes))
         }
     }
 
@@ -269,7 +269,7 @@ extension RFC_2822.AddrSpec {
                         || code == ASCII.Code.rightSquareBracket
                         || code == ASCII.Code.reverseSolidus
                 else {
-                    throw Error.invalidDomain(String(decoding: codes, as: UTF8.self))
+                    throw Error.invalidDomain(String(ascii: codes))
                 }
                 isEscaped = false
             } else if code == ASCII.Code.reverseSolidus {
@@ -281,13 +281,13 @@ extension RFC_2822.AddrSpec {
                     || (code >= 14 && code <= 31) || (code >= 33 && code <= 90)
                     || (code >= 94 && code <= 126)
                 guard isValidDText else {
-                    throw Error.invalidDomain(String(decoding: codes, as: UTF8.self))
+                    throw Error.invalidDomain(String(ascii: codes))
                 }
             }
         }
 
         if isEscaped {
-            throw Error.invalidDomain(String(decoding: codes, as: UTF8.self))
+            throw Error.invalidDomain(String(ascii: codes))
         }
     }
 

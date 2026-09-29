@@ -54,7 +54,7 @@ extension RFC_2822.Message.Received.NameValuePair: ASCII.Parseable {
 
         var codeArray: [ASCII.Code]
         do throws(ASCII.Code.Error) {
-            codeArray = try [ASCII.Code](bytes)
+            codeArray = try bytes.map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
         } catch {
             throw Error.invalidName(String(decoding: bytes, as: UTF8.self))
         }
@@ -84,7 +84,7 @@ extension RFC_2822.Message.Received.NameValuePair: ASCII.Parseable {
         let value: String
 
         if let endIndex = nameEndIndex {
-            name = String(decoding: codeArray[..<endIndex], as: UTF8.self)
+            name = String(ascii: codeArray[..<endIndex])
 
             var valueStart = endIndex
             while valueStart < codeArray.count
@@ -95,13 +95,13 @@ extension RFC_2822.Message.Received.NameValuePair: ASCII.Parseable {
             }
 
             if valueStart < codeArray.count {
-                value = String(decoding: codeArray[valueStart...], as: UTF8.self)
+                value = String(ascii: codeArray[valueStart...])
             } else {
                 value = ""
             }
         } else {
 
-            name = String(decoding: codeArray, as: UTF8.self)
+            name = String(ascii: codeArray)
             value = ""
         }
 

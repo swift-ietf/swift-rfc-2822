@@ -50,7 +50,7 @@ extension RFC_2822.Message.Path: ASCII.Parseable {
 
         var codeArray: [ASCII.Code]
         do throws(ASCII.Code.Error) {
-            codeArray = try [ASCII.Code](bytes)
+            codeArray = try bytes.map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
         } catch {
             throw Error.missingAngleBrackets(String(decoding: bytes, as: UTF8.self))
         }
@@ -75,7 +75,7 @@ extension RFC_2822.Message.Path: ASCII.Parseable {
             throw Error.missingAngleBrackets(String(decoding: bytes, as: UTF8.self))
         }
 
-        let contentBytes = [Byte](codeArray.dropFirst().dropLast())
+        let contentBytes = codeArray.dropFirst().dropLast().map(\.byte)
 
         if contentBytes.isEmpty {
             self.init(__unchecked: (), addrSpec: nil)

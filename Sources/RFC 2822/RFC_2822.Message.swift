@@ -60,7 +60,7 @@ extension RFC_2822.Message {
                 return try ASCII.Code(byte)
             } catch {
 
-                return ASCII.Code(unchecked: 0)
+                return ASCII.Code.zero
             }
         }
 

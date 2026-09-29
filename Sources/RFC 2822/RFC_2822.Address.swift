@@ -138,7 +138,7 @@ extension RFC_2822.Address: ASCII.Parseable {
 
         let codeArray: [ASCII.Code]
         do throws(ASCII.Code.Error) {
-            codeArray = try [ASCII.Code](bytes)
+            codeArray = try bytes.map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
         } catch {
             throw Error.invalidGroup(String(decoding: bytes, as: UTF8.self))
         }
@@ -189,11 +189,10 @@ extension RFC_2822.Address: ASCII.Parseable {
                 && displayNameCodes.last == ASCII.Code.quotationMark
             {
                 displayName = String(
-                    decoding: displayNameCodes.dropFirst().dropLast(),
-                    as: UTF8.self
+                    ascii: displayNameCodes.dropFirst().dropLast()
                 )
             } else {
-                displayName = String(decoding: displayNameCodes, as: UTF8.self)
+                displayName = String(ascii: displayNameCodes)
             }
 
             do throws(RFC_2822.Mailbox.Error) {
@@ -239,7 +238,7 @@ extension RFC_2822.Address: ASCII.Parseable {
                         }
                         if !trimmed.isEmpty {
                             do throws(RFC_2822.Mailbox.Error) {
-                                let mailbox = try RFC_2822.Mailbox(ascii: [Byte](trimmed))
+                                let mailbox = try RFC_2822.Mailbox(ascii: trimmed.map(\.byte))
                                 mailboxes.append(mailbox)
                             } catch {
                                 throw Error.invalidMailbox(error)
@@ -264,7 +263,7 @@ extension RFC_2822.Address: ASCII.Parseable {
                 }
                 if !trimmed.isEmpty {
                     do throws(RFC_2822.Mailbox.Error) {
-                        let mailbox = try RFC_2822.Mailbox(ascii: [Byte](trimmed))
+                        let mailbox = try RFC_2822.Mailbox(ascii: trimmed.map(\.byte))
                         mailboxes.append(mailbox)
                     } catch {
                         throw Error.invalidMailbox(error)

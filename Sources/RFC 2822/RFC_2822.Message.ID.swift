@@ -65,7 +65,7 @@ extension RFC_2822.Message.ID: ASCII.Parseable {
 
         var codeArray: [ASCII.Code]
         do throws(ASCII.Code.Error) {
-            codeArray = try [ASCII.Code](bytes)
+            codeArray = try bytes.map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
         } catch {
             throw Error.missingAngleBrackets(String(decoding: bytes, as: UTF8.self))
         }
@@ -120,23 +120,23 @@ extension RFC_2822.Message.ID: ASCII.Parseable {
                         (code >= 32 && code <= 126) && code != ASCII.Code.reverseSolidus
                         && code != ASCII.Code.quotationMark
                     guard isValidQText else {
-                        throw Error.invalidIdLeft(String(decoding: idLeftCodes, as: UTF8.self))
+                        throw Error.invalidIdLeft(String(ascii: idLeftCodes))
                     }
                 }
             }
             if isEscaped {
-                throw Error.invalidIdLeft(String(decoding: idLeftCodes, as: UTF8.self))
+                throw Error.invalidIdLeft(String(ascii: idLeftCodes))
             }
         } else {
 
             guard firstLeftCode != ASCII.Code.period && lastLeftCode != ASCII.Code.period else {
-                throw Error.invalidIdLeft(String(decoding: idLeftCodes, as: UTF8.self))
+                throw Error.invalidIdLeft(String(ascii: idLeftCodes))
             }
 
             var previousCode: ASCII.Code = ASCII.Code(0)
             for code in idLeftCodes {
                 if code == ASCII.Code.period && previousCode == ASCII.Code.period {
-                    throw Error.invalidIdLeft(String(decoding: idLeftCodes, as: UTF8.self))
+                    throw Error.invalidIdLeft(String(ascii: idLeftCodes))
                 }
                 previousCode = code
 
@@ -164,7 +164,7 @@ extension RFC_2822.Message.ID: ASCII.Parseable {
                     || code == 0x7E
 
                 guard isAtext else {
-                    throw Error.invalidIdLeft(String(decoding: idLeftCodes, as: UTF8.self))
+                    throw Error.invalidIdLeft(String(ascii: idLeftCodes))
                 }
             }
         }
@@ -184,19 +184,19 @@ extension RFC_2822.Message.ID: ASCII.Parseable {
 
                 let isValidDText = (code >= 33 && code <= 90) || (code >= 94 && code <= 126)
                 guard isValidDText else {
-                    throw Error.invalidIdRight(String(decoding: idRightCodes, as: UTF8.self))
+                    throw Error.invalidIdRight(String(ascii: idRightCodes))
                 }
             }
         } else {
 
             guard firstRightCode != ASCII.Code.period && lastRightCode != ASCII.Code.period else {
-                throw Error.invalidIdRight(String(decoding: idRightCodes, as: UTF8.self))
+                throw Error.invalidIdRight(String(ascii: idRightCodes))
             }
 
             var previousCode: ASCII.Code = ASCII.Code(0)
             for code in idRightCodes {
                 if code == ASCII.Code.period && previousCode == ASCII.Code.period {
-                    throw Error.invalidIdRight(String(decoding: idRightCodes, as: UTF8.self))
+                    throw Error.invalidIdRight(String(ascii: idRightCodes))
                 }
                 previousCode = code
 
@@ -224,15 +224,15 @@ extension RFC_2822.Message.ID: ASCII.Parseable {
                     || code == 0x7E
 
                 guard isAtext else {
-                    throw Error.invalidIdRight(String(decoding: idRightCodes, as: UTF8.self))
+                    throw Error.invalidIdRight(String(ascii: idRightCodes))
                 }
             }
         }
 
         self.init(
             __unchecked: (),
-            idLeft: String(decoding: idLeftCodes, as: UTF8.self),
-            idRight: String(decoding: idRightCodes, as: UTF8.self)
+            idLeft: String(ascii: idLeftCodes),
+            idRight: String(ascii: idRightCodes)
         )
     }
 }

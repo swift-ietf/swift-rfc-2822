@@ -43,7 +43,7 @@ extension RFC_2822.Message.Body: Swift.RawRepresentable {
 extension RFC_2822.Message.Body {
 
     public init(_ string: String) {
-        self.init(__unchecked: (), bytes: [Byte](string.utf8))
+        self.init(__unchecked: (), bytes: [Byte](utf8: string))
     }
 }
 

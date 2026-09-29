@@ -196,7 +196,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
 
         let codeArray: [ASCII.Code]
         do throws(ASCII.Code.Error) {
-            codeArray = try [ASCII.Code](bytes)
+            codeArray = try bytes.map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
         } catch {
             throw Error.missingResentDate(String(decoding: bytes, as: UTF8.self))
         }
@@ -277,8 +277,8 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
             let fieldNameCodes = trimWhitespace(Array(line[..<colonIndex]))
             let fieldValueCodes = trimWhitespace(Array(line[(colonIndex + 1)...]))
 
-            let fieldName = String(decoding: fieldNameCodes, as: UTF8.self).lowercased()
-            let fieldValueBytes = [Byte](fieldValueCodes)
+            let fieldName = String(ascii: fieldNameCodes).lowercased()
+            let fieldValueBytes = fieldValueCodes.map(\.byte)
 
             switch fieldName {
             case "resent-date":
@@ -293,7 +293,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                     let trimmed = trimWhitespace(mailboxCodes)
                     guard !trimmed.isEmpty else { continue }
                     let mailbox = Self.leniently { () throws(RFC_2822.Mailbox.Error) in
-                        try RFC_2822.Mailbox(ascii: [Byte](trimmed))
+                        try RFC_2822.Mailbox(ascii: trimmed.map(\.byte))
                     }
                     if let mailbox {
                         from.append(mailbox)
@@ -312,7 +312,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                     let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
                     let address = Self.leniently { () throws(RFC_2822.Address.Error) in
-                        try RFC_2822.Address(ascii: [Byte](trimmed))
+                        try RFC_2822.Address(ascii: trimmed.map(\.byte))
                     }
                     if let address {
                         addresses.append(address)
@@ -327,7 +327,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                     let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
                     let address = Self.leniently { () throws(RFC_2822.Address.Error) in
-                        try RFC_2822.Address(ascii: [Byte](trimmed))
+                        try RFC_2822.Address(ascii: trimmed.map(\.byte))
                     }
                     if let address {
                         addresses.append(address)
@@ -342,7 +342,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                     let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
                     let address = Self.leniently { () throws(RFC_2822.Address.Error) in
-                        try RFC_2822.Address(ascii: [Byte](trimmed))
+                        try RFC_2822.Address(ascii: trimmed.map(\.byte))
                     }
                     if let address {
                         addresses.append(address)
@@ -361,11 +361,11 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
         }
 
         guard let ts = timestamp else {
-            throw Error.missingResentDate(String(decoding: codeArray, as: UTF8.self))
+            throw Error.missingResentDate(String(ascii: codeArray))
         }
 
         guard !from.isEmpty else {
-            throw Error.missingResentFrom(String(decoding: codeArray, as: UTF8.self))
+            throw Error.missingResentFrom(String(ascii: codeArray))
         }
 
         self.init(

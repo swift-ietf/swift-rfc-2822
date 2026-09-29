@@ -56,7 +56,7 @@ extension RFC_2822.Message.Received: ASCII.Parseable {
 
         let codeArray: [ASCII.Code]
         do throws(ASCII.Code.Error) {
-            codeArray = try [ASCII.Code](bytes)
+            codeArray = try bytes.map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
         } catch {
             throw Error.missingSemicolon(String(decoding: bytes, as: UTF8.self))
         }
@@ -84,7 +84,7 @@ extension RFC_2822.Message.Received: ASCII.Parseable {
 
         let timestamp: RFC_2822.Timestamp
         do throws(RFC_2822.Timestamp.Error) {
-            timestamp = try RFC_2822.Timestamp(ascii: [Byte](timestampCodes))
+            timestamp = try RFC_2822.Timestamp(ascii: timestampCodes.map(\.byte))
         } catch {
             throw Error.invalidTimestamp(error)
         }
@@ -98,7 +98,7 @@ extension RFC_2822.Message.Received: ASCII.Parseable {
         for code in nameValCodes {
             if code == ASCII.Code.space || code == ASCII.Code.htab {
                 if !currentToken.isEmpty {
-                    let tokenString = String(decoding: currentToken, as: UTF8.self)
+                    let tokenString = String(ascii: currentToken)
                     if let name = currentName {
                         tokens.append(
                             NameValuePair(__unchecked: (), name: name, value: tokenString)
@@ -115,7 +115,7 @@ extension RFC_2822.Message.Received: ASCII.Parseable {
         }
 
         if !currentToken.isEmpty {
-            let tokenString = String(decoding: currentToken, as: UTF8.self)
+            let tokenString = String(ascii: currentToken)
             if let name = currentName {
                 tokens.append(NameValuePair(__unchecked: (), name: name, value: tokenString))
             } else if !tokenString.isEmpty {

@@ -117,7 +117,7 @@ extension RFC_2822.Mailbox: ASCII.Parseable {
 
         let codeArray: [ASCII.Code]
         do throws(ASCII.Code.Error) {
-            codeArray = try [ASCII.Code](bytes)
+            codeArray = try bytes.map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
         } catch {
             throw Error.invalidFormat(String(decoding: bytes, as: UTF8.self))
         }
@@ -145,20 +145,19 @@ extension RFC_2822.Mailbox: ASCII.Parseable {
                 trimmedDisplayNameCodes.removeLast()
             }
 
-            var displayName = String(decoding: trimmedDisplayNameCodes, as: UTF8.self)
+            var displayName = String(ascii: trimmedDisplayNameCodes)
 
             if !trimmedDisplayNameCodes.isEmpty
                 && trimmedDisplayNameCodes.first == ASCII.Code.quotationMark
                 && trimmedDisplayNameCodes.last == ASCII.Code.quotationMark
             {
                 displayName = String(
-                    decoding: trimmedDisplayNameCodes.dropFirst().dropLast(),
-                    as: UTF8.self
+                    ascii: trimmedDisplayNameCodes.dropFirst().dropLast()
                 )
             }
 
             let addrSpecStart = codeArray.index(after: openIndex)
-            let addrSpecBytes = [Byte](codeArray[addrSpecStart..<closeIndex])
+            let addrSpecBytes = codeArray[addrSpecStart..<closeIndex].map(\.byte)
 
             let emailAddress: RFC_2822.AddrSpec
             do throws(RFC_2822.AddrSpec.Error) {

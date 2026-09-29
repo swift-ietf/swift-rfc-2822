@@ -355,7 +355,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
 
         let codeArray: [ASCII.Code]
         do throws(ASCII.Code.Error) {
-            codeArray = try [ASCII.Code](bytes)
+            codeArray = try bytes.map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
         } catch {
             throw Error.invalidFieldFormat("", String(decoding: bytes, as: UTF8.self))
         }
@@ -378,7 +378,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
         func codesEqualCaseInsensitive(_ codes: [ASCII.Code], _ string: String) -> Bool {
             let stringCodes: [ASCII.Code]
             do throws(ASCII.Code.Error) {
-                stringCodes = try [ASCII.Code](string.utf8)
+                stringCodes = try [Byte](utf8: string).map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
             } catch {
 
                 return false
@@ -490,14 +490,14 @@ extension RFC_2822.Fields: ASCII.Parseable {
         var keywords: [String]?
 
         for (nameCodes, valueCodes) in headers {
-            let valueBytes = [Byte](valueCodes)
+            let valueBytes = valueCodes.map(\.byte)
             if codesEqualCaseInsensitive(nameCodes, "date") {
                 do throws(RFC_2822.Timestamp.Error) {
                     date = try RFC_2822.Timestamp(ascii: valueBytes)
                 } catch {
                     throw Error.invalidFieldFormat(
                         "Date",
-                        String(decoding: valueCodes, as: UTF8.self)
+                        String(ascii: valueCodes)
                     )
                 }
             } else if codesEqualCaseInsensitive(nameCodes, "from") {
@@ -507,7 +507,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do throws(RFC_2822.Mailbox.Error) {
-                            let mailbox = try RFC_2822.Mailbox(ascii: [Byte](trimmed))
+                            let mailbox = try RFC_2822.Mailbox(ascii: trimmed.map(\.byte))
                             from.append(mailbox)
                         } catch {
                             throw Error.invalidMailbox(error)
@@ -527,7 +527,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do throws(RFC_2822.Address.Error) {
-                            let address = try RFC_2822.Address(ascii: [Byte](trimmed))
+                            let address = try RFC_2822.Address(ascii: trimmed.map(\.byte))
                             addresses.append(address)
                         } catch {
                             throw Error.invalidAddress(error)
@@ -542,7 +542,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do throws(RFC_2822.Address.Error) {
-                            let address = try RFC_2822.Address(ascii: [Byte](trimmed))
+                            let address = try RFC_2822.Address(ascii: trimmed.map(\.byte))
                             addresses.append(address)
                         } catch {
                             throw Error.invalidAddress(error)
@@ -557,7 +557,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do throws(RFC_2822.Address.Error) {
-                            let address = try RFC_2822.Address(ascii: [Byte](trimmed))
+                            let address = try RFC_2822.Address(ascii: trimmed.map(\.byte))
                             addresses.append(address)
                         } catch {
                             throw Error.invalidAddress(error)
@@ -572,7 +572,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do throws(RFC_2822.Address.Error) {
-                            let address = try RFC_2822.Address(ascii: [Byte](trimmed))
+                            let address = try RFC_2822.Address(ascii: trimmed.map(\.byte))
                             addresses.append(address)
                         } catch {
                             throw Error.invalidAddress(error)
@@ -594,7 +594,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty && trimmed.first == ASCII.Code.lessThanSign {
                         do throws(RFC_2822.Message.ID.Error) {
-                            let id = try RFC_2822.Message.ID(ascii: [Byte](trimmed))
+                            let id = try RFC_2822.Message.ID(ascii: trimmed.map(\.byte))
                             ids.append(id)
                         } catch {
                             throw Error.invalidMessageID(error)
@@ -609,7 +609,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty && trimmed.first == ASCII.Code.lessThanSign {
                         do throws(RFC_2822.Message.ID.Error) {
-                            let id = try RFC_2822.Message.ID(ascii: [Byte](trimmed))
+                            let id = try RFC_2822.Message.ID(ascii: trimmed.map(\.byte))
                             ids.append(id)
                         } catch {
                             throw Error.invalidMessageID(error)
@@ -618,12 +618,12 @@ extension RFC_2822.Fields: ASCII.Parseable {
                 }
                 references = ids.isEmpty ? nil : ids
             } else if codesEqualCaseInsensitive(nameCodes, "subject") {
-                subject = String(decoding: valueCodes, as: UTF8.self)
+                subject = String(ascii: valueCodes)
             } else if codesEqualCaseInsensitive(nameCodes, "comments") {
-                comments = String(decoding: valueCodes, as: UTF8.self)
+                comments = String(ascii: valueCodes)
             } else if codesEqualCaseInsensitive(nameCodes, "keywords") {
                 let parts = splitCodes(valueCodes, separator: ASCII.Code.comma)
-                keywords = parts.map { String(decoding: trimWhitespace($0), as: UTF8.self) }
+                keywords = parts.map { String(ascii: trimWhitespace($0)) }
             }
 
         }

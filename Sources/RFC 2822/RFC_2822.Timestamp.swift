@@ -223,7 +223,7 @@ extension RFC_2822.Timestamp: ASCII.Parseable {
 
         var codeArray: [ASCII.Code]
         do throws(ASCII.Code.Error) {
-            codeArray = try [ASCII.Code](bytes)
+            codeArray = try bytes.map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
         } catch {
             throw Error.invalidFormat(String(decoding: bytes, as: UTF8.self))
         }
@@ -241,7 +241,7 @@ extension RFC_2822.Timestamp: ASCII.Parseable {
 
         guard !codeArray.isEmpty else { throw Error.empty }
 
-        let original = String(decoding: codeArray, as: UTF8.self)
+        let original = String(ascii: codeArray)
 
         let dayNames: [String: DayOfWeek] = [
             "mon": .monday, "tue": .tuesday, "wed": .wednesday, "thu": .thursday,
@@ -285,7 +285,7 @@ extension RFC_2822.Timestamp: ASCII.Parseable {
             for offset in 0..<count {
                 guard codeArray[idx + offset].isLetter else { return nil }
             }
-            return String(decoding: codeArray[idx..<(idx + count)], as: UTF8.self).lowercased()
+            return String(ascii: codeArray[idx..<(idx + count)]).lowercased()
         }
 
         func parseDigits(max: Int) -> (value: Int, count: Int)? {
@@ -317,7 +317,7 @@ extension RFC_2822.Timestamp: ASCII.Parseable {
             var letterEnd = idx
             while letterEnd < end && codeArray[letterEnd].isLetter { letterEnd += 1 }
             guard letterEnd > idx else { return nil }
-            let token = String(decoding: codeArray[idx..<letterEnd], as: UTF8.self).uppercased()
+            let token = String(ascii: codeArray[idx..<letterEnd]).uppercased()
             idx = letterEnd
             switch token {
             case "UT", "GMT": return .offset(minutes: 0)
@@ -355,7 +355,7 @@ extension RFC_2822.Timestamp: ASCII.Parseable {
 
         skipCFWS()
         guard let monthToken = peekLetters(3), let month = monthNames[monthToken] else {
-            let remainder = String(decoding: codeArray[idx...], as: UTF8.self)
+            let remainder = String(ascii: codeArray[idx...])
             throw Error.invalidMonthName(remainder)
         }
         idx += 3
