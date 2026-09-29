@@ -9,7 +9,7 @@ extension RFC_2822.Mailbox {
     }
 }
 
-extension RFC_2822.Mailbox.Parse: Parser.`Protocol` {
+extension RFC_2822.Mailbox.Parse: Parsing {
     public typealias Failure = RFC_2822.Mailbox.Parse<Input>.Error
     public typealias Body = Never
 

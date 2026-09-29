@@ -9,7 +9,7 @@ extension RFC_2822.AddrSpec {
     }
 }
 
-extension RFC_2822.AddrSpec.Parse: Parser.`Protocol` {
+extension RFC_2822.AddrSpec.Parse: Parsing {
     public typealias Failure = RFC_2822.AddrSpec.Parse<Input>.Error
     public typealias Body = Never
 

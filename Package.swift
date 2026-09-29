@@ -16,38 +16,23 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/swift-molecules/swift-binary.git",
-            branch: "main"
-        ),
-        .package(
-            url: "https://github.com/swift-molecules/swift-ascii-serializer.git",
-            branch: "main"
-        ),
-        .package(
-            url: "https://github.com/swift-molecules/swift-ascii-parser.git",
-            branch: "main"
-        ),
+            url: "https://github.com/swift-atoms/swift-binary.git",
+            branch: "main", traits: ["Serializer"]),
         .package(url: "https://github.com/swift-incits/swift-incits-4-1986.git", branch: "main"),
         .package(
-            url: "https://github.com/swift-molecules/swift-parser.git",
+            url: "https://github.com/swift-atoms/swift-parser.git",
             branch: "main"
         ),
+        .package(url: "https://github.com/swift-atoms/swift-ascii.git", branch: "main", traits: ["Parser", "Serializer"]),
     ],
     targets: [
         .target(
             name: "RFC 2822",
             dependencies: [
                 .product(name: "Binary", package: "swift-binary"),
-                .product(
-                    name: "ASCII Serializer",
-                    package: "swift-ascii-serializer"
-                ),
-                .product(
-                    name: "Parseable ASCII",
-                    package: "swift-ascii-parser"
-                ),
                 .product(name: "INCITS 4 1986", package: "swift-incits-4-1986"),
                 .product(name: "Parser", package: "swift-parser"),
+                .product(name: "ASCII", package: "swift-ascii"),
             ]
         ),
         .target(

@@ -1,4 +1,4 @@
-public import Binary_Serializable
+public import Binary
 import INCITS_4_1986
 
 extension RFC_2822 {

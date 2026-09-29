@@ -1,4 +1,4 @@
-import Binary_Serializable
+import Binary
 
 extension String {
 

@@ -1,7 +1,6 @@
-public import ASCII_Serializer
-public import Binary_Serializable
+public import ASCII
+public import Binary
 import INCITS_4_1986
-public import Parseable_ASCII
 
 extension RFC_2822.Message.Received {
 
