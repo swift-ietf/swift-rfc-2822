@@ -305,7 +305,7 @@ extension RFC_2822.Timestamp: ASCII.Parseable {
                 let isNegative = codeArray[idx] == ASCII.Code.hyphen
                 let saved = idx
                 idx += 1
-                guard let (value, count) = parseDigits(max: 4), count == 4 else {
+                guard let (value, count) = parseDigits(max: 4), count == 4, value % 100 <= 59 else {
                     idx = saved
                     return nil
                 }
