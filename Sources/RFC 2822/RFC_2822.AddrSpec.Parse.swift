@@ -10,11 +10,6 @@ extension RFC_2822.AddrSpec {
 }
 
 extension RFC_2822.AddrSpec.Parse: Parsing {
-    public var body: Never {
-        borrowing get {
-            return fatalError("\(Self.self) is a leaf parser: implement parse(_:) directly")
-        }
-    }
 
     public typealias Failure = RFC_2822.AddrSpec.Parse<Input>.Error
     public typealias Body = Never
