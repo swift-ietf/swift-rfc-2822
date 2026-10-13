@@ -1,6 +1,6 @@
 extension RFC_2822.Message.Path {
 
-    public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
+    public enum Error: Swift::Error, Sendable, Equatable, CustomStringConvertible {
         case empty
         case missingAngleBrackets(_ value: String)
         case invalidAddrSpec(_ underlying: RFC_2822.AddrSpec.Error)

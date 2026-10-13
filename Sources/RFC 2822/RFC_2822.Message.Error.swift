@@ -1,6 +1,6 @@
 extension RFC_2822.Message {
 
-    public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
+    public enum Error: Swift::Error, Sendable, Equatable, CustomStringConvertible {
         case empty
         case invalidFields(RFC_2822.Fields.Error)
     }

@@ -50,7 +50,7 @@ extension RFC_2822.Message: Binary.Serializable {
 
 extension RFC_2822.Message {
 
-    public init<Bytes: Swift.Collection>(binary bytes: Bytes) throws(Error)
+    public init<Bytes: Swift::Collection>(binary bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -120,7 +120,7 @@ extension RFC_2822.Message {
     }
 }
 
-extension RFC_2822.Message: Swift.RawRepresentable {
+extension RFC_2822.Message: Swift::RawRepresentable {
 
     public var rawValue: String { description }
 

@@ -50,7 +50,7 @@ extension RFC_2822.Message.Received: ASCII.Serializable, Binary.Serializable {
 
 extension RFC_2822.Message.Received: ASCII.Parseable {
 
-    public init<Bytes: Swift.Collection>(ascii bytes: Bytes) throws(Error)
+    public init<Bytes: Swift::Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -128,7 +128,7 @@ extension RFC_2822.Message.Received: ASCII.Parseable {
     }
 }
 
-extension RFC_2822.Message.Received: Swift.RawRepresentable {
+extension RFC_2822.Message.Received: Swift::RawRepresentable {
 
     public var rawValue: String { description }
 

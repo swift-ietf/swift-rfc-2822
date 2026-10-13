@@ -1,6 +1,6 @@
 extension RFC_2822.Message.Body {
 
-    public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
+    public enum Error: Swift::Error, Sendable, Equatable, CustomStringConvertible {
         case never
     }
 }

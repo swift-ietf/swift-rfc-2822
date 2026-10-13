@@ -104,7 +104,7 @@ extension RFC_2822.AddrSpec: ASCII.Serializable, Binary.Serializable {
 
 extension RFC_2822.AddrSpec: ASCII.Parseable {
 
-    public init<Bytes: Swift.Collection>(ascii bytes: Bytes) throws(Error)
+    public init<Bytes: Swift::Collection>(ascii bytes: Bytes) throws(Error)
     where Bytes.Element == Byte {
         guard !bytes.isEmpty else { throw Error.empty }
 
@@ -137,7 +137,7 @@ extension RFC_2822.AddrSpec: ASCII.Parseable {
 
 extension RFC_2822.AddrSpec {
 
-    private static func validateLocalPart<Codes: Swift.Collection>(
+    private static func validateLocalPart<Codes: Swift::Collection>(
         _ codes: Codes
     ) throws(Error) where Codes.Element == ASCII.Code {
         guard let firstCode = codes.first else {
@@ -156,7 +156,7 @@ extension RFC_2822.AddrSpec {
         }
     }
 
-    private static func validateDomain<Codes: Swift.Collection>(
+    private static func validateDomain<Codes: Swift::Collection>(
         _ codes: Codes
     ) throws(Error) where Codes.Element == ASCII.Code {
         guard let firstCode = codes.first else {
@@ -175,7 +175,7 @@ extension RFC_2822.AddrSpec {
         }
     }
 
-    private static func validateDotAtom<Codes: Swift.Collection>(
+    private static func validateDotAtom<Codes: Swift::Collection>(
         _ codes: Codes,
         for part: Part
     ) throws(Error) where Codes.Element == ASCII.Code {
@@ -206,7 +206,7 @@ extension RFC_2822.AddrSpec {
         }
     }
 
-    private static func validateQuotedString<Codes: Swift.Collection>(
+    private static func validateQuotedString<Codes: Swift::Collection>(
         _ codes: Codes,
         for part: Part
     ) throws(Error) where Codes.Element == ASCII.Code {
@@ -245,7 +245,7 @@ extension RFC_2822.AddrSpec {
         }
     }
 
-    private static func validateDomainLiteral<Codes: Swift.Collection>(
+    private static func validateDomainLiteral<Codes: Swift::Collection>(
         _ codes: Codes
     ) throws(Error) where Codes.Element == ASCII.Code {
         var isEscaped = false
@@ -299,7 +299,7 @@ extension RFC_2822.AddrSpec {
     }
 }
 
-extension RFC_2822.AddrSpec: Swift.RawRepresentable {
+extension RFC_2822.AddrSpec: Swift::RawRepresentable {
 
     public var rawValue: String { description }
 

@@ -28,12 +28,12 @@ extension RFC_2822.Message.Body: Binary.Serializable {
 
 extension RFC_2822.Message.Body {
 
-    public init<Bytes: Swift.Collection>(binary bytes: Bytes) where Bytes.Element == Byte {
+    public init<Bytes: Swift::Collection>(binary bytes: Bytes) where Bytes.Element == Byte {
         self.init(__unchecked: (), bytes: Array(bytes))
     }
 }
 
-extension RFC_2822.Message.Body: Swift.RawRepresentable {
+extension RFC_2822.Message.Body: Swift::RawRepresentable {
 
     public var rawValue: String { description }
 

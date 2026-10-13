@@ -1,6 +1,6 @@
 extension RFC_2822.Message.Received {
 
-    public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
+    public enum Error: Swift::Error, Sendable, Equatable, CustomStringConvertible {
         case empty
         case missingSemicolon(_ value: String)
         case missingTimestamp(_ value: String)

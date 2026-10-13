@@ -1,6 +1,6 @@
 extension RFC_2822.Timestamp {
 
-    public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
+    public enum Error: Swift::Error, Sendable, Equatable, CustomStringConvertible {
         case empty
         case invalidFormat(_ value: String)
         case invalidMonthName(_ value: String)

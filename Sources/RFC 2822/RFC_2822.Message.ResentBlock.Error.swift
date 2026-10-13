@@ -1,6 +1,6 @@
 extension RFC_2822.Message.ResentBlock {
 
-    public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
+    public enum Error: Swift::Error, Sendable, Equatable, CustomStringConvertible {
         case empty
         case missingResentDate(_ value: String)
         case missingResentFrom(_ value: String)

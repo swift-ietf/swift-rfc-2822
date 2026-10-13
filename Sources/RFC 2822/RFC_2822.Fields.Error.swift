@@ -1,6 +1,6 @@
 extension RFC_2822.Fields {
 
-    public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
+    public enum Error: Swift::Error, Sendable, Equatable, CustomStringConvertible {
         case empty
         case missingRequiredField(_ fieldName: String)
         case invalidFieldFormat(_ fieldName: String, _ value: String)

@@ -1,6 +1,6 @@
 extension RFC_2822.Address {
 
-    public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
+    public enum Error: Swift::Error, Sendable, Equatable, CustomStringConvertible {
         case empty
         case invalidMailbox(RFC_2822.Mailbox.Error)
         case invalidGroup(_ value: String)

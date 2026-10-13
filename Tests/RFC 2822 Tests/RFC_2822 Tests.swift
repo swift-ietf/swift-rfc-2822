@@ -162,7 +162,7 @@ extension RFC_2822.AddrSpec.Test {
                 "user\\r\\nBcc: attacker@evil.example@example.com"
                 """.utf8
             )
-            #expect(throws: (any Swift.Error).self) {
+            #expect(throws: (any Swift::Error).self) {
                 _ = try JSONDecoder().decode(RFC_2822.AddrSpec.self, from: json)
             }
         }
@@ -177,7 +177,7 @@ extension RFC_2822.AddrSpec.Test {
                 {"localPart":"user","domain":"example.com"}
                 """.utf8
             )
-            #expect(throws: (any Swift.Error).self) {
+            #expect(throws: (any Swift::Error).self) {
                 _ = try JSONDecoder().decode(RFC_2822.AddrSpec.self, from: json)
             }
         }
@@ -349,7 +349,7 @@ extension RFC_2822.Mailbox.Test {
                 "Evil\\r\\nBcc: attacker@evil.example <john@example.com>"
                 """.utf8
             )
-            #expect(throws: (any Swift.Error).self) {
+            #expect(throws: (any Swift::Error).self) {
                 _ = try JSONDecoder().decode(RFC_2822.Mailbox.self, from: json)
             }
         }
@@ -361,7 +361,7 @@ extension RFC_2822.Mailbox.Test {
                 "Evil\\nHeader: injected <john@example.com>"
                 """.utf8
             )
-            #expect(throws: (any Swift.Error).self) {
+            #expect(throws: (any Swift::Error).self) {
                 _ = try JSONDecoder().decode(RFC_2822.Mailbox.self, from: json)
             }
         }
@@ -373,7 +373,7 @@ extension RFC_2822.Mailbox.Test {
                 "Evil\\rHeader: injected <john@example.com>"
                 """.utf8
             )
-            #expect(throws: (any Swift.Error).self) {
+            #expect(throws: (any Swift::Error).self) {
                 _ = try JSONDecoder().decode(RFC_2822.Mailbox.self, from: json)
             }
         }
@@ -388,7 +388,7 @@ extension RFC_2822.Mailbox.Test {
                 {"displayName":"Evil\\r\\nBcc: attacker@evil.example","emailAddress":{"localPart":"user","domain":"example.com"}}
                 """.utf8
             )
-            #expect(throws: (any Swift.Error).self) {
+            #expect(throws: (any Swift::Error).self) {
                 _ = try JSONDecoder().decode(RFC_2822.Mailbox.self, from: json)
             }
         }
@@ -529,7 +529,7 @@ extension RFC_2822.Address.Test {
                 "Evil\\r\\nBcc-attacker-evil-example:john@example.com;"
                 """.utf8
             )
-            #expect(throws: (any Swift.Error).self) {
+            #expect(throws: (any Swift::Error).self) {
                 _ = try JSONDecoder().decode(RFC_2822.Address.self, from: json)
             }
         }
@@ -560,7 +560,7 @@ extension RFC_2822.Address.Test {
                 {"group":{"_0":"Evil\\r\\nBcc: attacker@evil.example","_1":[]}}
                 """.utf8
             )
-            #expect(throws: (any Swift.Error).self) {
+            #expect(throws: (any Swift::Error).self) {
                 _ = try JSONDecoder().decode(RFC_2822.Address.Kind.self, from: json)
             }
         }
@@ -574,7 +574,7 @@ extension RFC_2822.Address.Test {
                 {"group":{"_0":"Evil\\nHeader: injected","_1":[]}}
                 """.utf8
             )
-            #expect(throws: (any Swift.Error).self) {
+            #expect(throws: (any Swift::Error).self) {
                 _ = try JSONDecoder().decode(RFC_2822.Address.Kind.self, from: json)
             }
         }
@@ -588,7 +588,7 @@ extension RFC_2822.Address.Test {
                 {"group":{"_0":"Evil\\rHeader: injected","_1":[]}}
                 """.utf8
             )
-            #expect(throws: (any Swift.Error).self) {
+            #expect(throws: (any Swift::Error).self) {
                 _ = try JSONDecoder().decode(RFC_2822.Address.Kind.self, from: json)
             }
         }

@@ -1,6 +1,6 @@
 extension RFC_2822.Message.Received.NameValuePair {
 
-    public enum Error: Swift.Error, Sendable, Equatable, CustomStringConvertible {
+    public enum Error: Swift::Error, Sendable, Equatable, CustomStringConvertible {
         case empty
         case missingValue(_ name: String)
         case invalidName(_ value: String)
