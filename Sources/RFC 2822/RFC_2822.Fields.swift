@@ -420,8 +420,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
         while i < codeArray.count {
             let code = codeArray[i]
 
-            if code == ASCII.Code.cr && i + 1 < codeArray.count && codeArray[i + 1] == ASCII.Code.lf
-            {
+            if code == ASCII.Code.cr && i + 1 < codeArray.count && codeArray[i + 1] == ASCII.Code.lf {
 
                 i += 2
 

@@ -99,12 +99,9 @@ extension RFC_2822.Message.ID: ASCII.Parseable {
         let idLeftCodes: [ASCII.Code] = Array(contentCodes[..<atIndex])
         let idRightCodes: [ASCII.Code] = Array(contentCodes[(atIndex + 1)...])
 
-        guard !idLeftCodes.isEmpty else {
+        guard let firstLeftCode = idLeftCodes.first, let lastLeftCode = idLeftCodes.last else {
             throw Error.invalidIdLeft("")
         }
-
-        let firstLeftCode = idLeftCodes[0]
-        let lastLeftCode = idLeftCodes.last!
 
         if firstLeftCode == ASCII.Code.quotationMark && lastLeftCode == ASCII.Code.quotationMark {
 
@@ -169,12 +166,9 @@ extension RFC_2822.Message.ID: ASCII.Parseable {
             }
         }
 
-        guard !idRightCodes.isEmpty else {
+        guard let firstRightCode = idRightCodes.first, let lastRightCode = idRightCodes.last else {
             throw Error.invalidIdRight("")
         }
-
-        let firstRightCode = idRightCodes[0]
-        let lastRightCode = idRightCodes.last!
 
         if firstRightCode == ASCII.Code.leftSquareBracket
             && lastRightCode == ASCII.Code.rightSquareBracket

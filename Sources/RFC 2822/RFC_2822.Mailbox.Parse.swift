@@ -28,49 +28,7 @@ extension RFC_2822.Mailbox.Parse: Parsing {
             input.formIndex(after: &idx)
         }
 
-        if let open = openAngle {
-
-            let displayName: Input?
-            if open > input.startIndex {
-                displayName = input[input.startIndex..<open]
-            } else {
-                displayName = nil
-            }
-
-            let afterOpen = input.index(after: open)
-
-            var close: Input.Index? = nil
-            var scanIdx = afterOpen
-            while scanIdx < input.endIndex {
-                if input[scanIdx] == 0x3E {
-                    close = scanIdx
-                    break
-                }
-                input.formIndex(after: &scanIdx)
-            }
-            guard let closeIdx = close else { throw .unterminatedAngleBracket }
-
-            let addrSlice = input[afterOpen..<closeIdx]
-            var atIndex: Input.Index? = nil
-            var atScan = addrSlice.startIndex
-            while atScan < addrSlice.endIndex {
-                if addrSlice[atScan] == 0x40 {
-                    atIndex = atScan
-                }
-                addrSlice.formIndex(after: &atScan)
-            }
-
-            guard let at = atIndex else { throw .missingAtSign }
-            guard at > addrSlice.startIndex else { throw .emptyLocalPart }
-            let afterAt = addrSlice.index(after: at)
-            guard afterAt < addrSlice.endIndex else { throw .emptyDomain }
-
-            let localPart = addrSlice[addrSlice.startIndex..<at]
-            let domain = addrSlice[afterAt..<addrSlice.endIndex]
-
-            input = input[input.index(after: closeIdx)...]
-            return Output(displayName: displayName, localPart: localPart, domain: domain)
-        } else {
+        guard let open = openAngle else {
 
             var atIndex: Input.Index? = nil
             var endIdx = input.startIndex
@@ -93,5 +51,46 @@ extension RFC_2822.Mailbox.Parse: Parsing {
             input = input[endIdx...]
             return Output(displayName: nil, localPart: localPart, domain: domain)
         }
+
+        let displayName: Input?
+        if open > input.startIndex {
+            displayName = input[input.startIndex..<open]
+        } else {
+            displayName = nil
+        }
+
+        let afterOpen = input.index(after: open)
+
+        var close: Input.Index? = nil
+        var scanIdx = afterOpen
+        while scanIdx < input.endIndex {
+            if input[scanIdx] == 0x3E {
+                close = scanIdx
+                break
+            }
+            input.formIndex(after: &scanIdx)
+        }
+        guard let closeIdx = close else { throw .unterminatedAngleBracket }
+
+        let addrSlice = input[afterOpen..<closeIdx]
+        var atIndex: Input.Index? = nil
+        var atScan = addrSlice.startIndex
+        while atScan < addrSlice.endIndex {
+            if addrSlice[atScan] == 0x40 {
+                atIndex = atScan
+            }
+            addrSlice.formIndex(after: &atScan)
+        }
+
+        guard let at = atIndex else { throw .missingAtSign }
+        guard at > addrSlice.startIndex else { throw .emptyLocalPart }
+        let afterAt = addrSlice.index(after: at)
+        guard afterAt < addrSlice.endIndex else { throw .emptyDomain }
+
+        let localPart = addrSlice[addrSlice.startIndex..<at]
+        let domain = addrSlice[afterAt..<addrSlice.endIndex]
+
+        input = input[input.index(after: closeIdx)...]
+        return Output(displayName: displayName, localPart: localPart, domain: domain)
     }
 }
