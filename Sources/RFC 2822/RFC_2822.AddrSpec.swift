@@ -6,14 +6,12 @@ extension RFC_2822 {
 
     public struct AddrSpec: Sendable, Codable {
         public let localPart: String
-        // swift-linter:disable:next raw concept
-        // REASON: RFC 2822's domain is a dot-atom or a domain literal such as [192.0.2.1], wider than DNS, and Domain, RFC_1123.Domain and RFC_1035.Domain all refuse a literal
-        public let domain: String
+        public let domain: Domain
 
         private init(
             __unchecked: Void,
             localPart: String,
-            domain: String
+            domain: Domain
         ) {
             self.localPart = localPart
             self.domain = domain
@@ -21,33 +19,9 @@ extension RFC_2822 {
 
         public init(
             localPart: String,
-            // swift-linter:disable:next raw concept
-            // REASON: RFC 2822's domain is a dot-atom or a domain literal such as [192.0.2.1], wider than DNS, and Domain, RFC_1123.Domain and RFC_1035.Domain all refuse a literal
-            domain: String
+            domain: Domain
         ) throws(Error) {
-
-            guard !localPart.isEmpty else {
-                throw Error.invalidLocalPart("")
-            }
-            let localCodes: [ASCII.Code]
-            do throws(ASCII.Code.Error) {
-                localCodes = try [Byte](utf8: localPart).map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
-            } catch {
-                throw Error.invalidLocalPart(localPart)
-            }
-            try Self.validateLocalPart(localCodes)
-
-            guard !domain.isEmpty else {
-                throw Error.invalidDomain("")
-            }
-            let domainCodes: [ASCII.Code]
-            do throws(ASCII.Code.Error) {
-                domainCodes = try [Byte](utf8: domain).map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
-            } catch {
-                throw Error.invalidDomain(domain)
-            }
-            try Self.validateDomain(domainCodes)
-
+            try Self.validate(localPart: localPart)
             self.init(__unchecked: (), localPart: localPart, domain: domain)
         }
     }
@@ -69,11 +43,11 @@ extension RFC_2822.AddrSpec: Hashable {
     public func hash(into hasher: inout Hasher) {
 
         hasher.combine(localPart)
-        hasher.combine(domain.lowercased())
+        hasher.combine(domain)
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.localPart == rhs.localPart && lhs.domain.lowercased() == rhs.domain.lowercased()
+        lhs.localPart == rhs.localPart && lhs.domain == rhs.domain
     }
 }
 
@@ -83,26 +57,26 @@ extension RFC_2822.AddrSpec: ASCII.Serializable, Binary.Serializable {
         _ addrSpec: RFC_2822.AddrSpec,
         into buffer: inout Buffer
     ) where Buffer.Element == ASCII.Code {
-        preconditionInjectionSafe(localPart: addrSpec.localPart, domain: addrSpec.domain)
+        preconditionInjectionSafe(localPart: addrSpec.localPart, domain: addrSpec.domain.value)
         buffer.reserveCapacity(
-            buffer.count + addrSpec.localPart.utf8.count + 1 + addrSpec.domain.utf8.count
+            buffer.count + addrSpec.localPart.utf8.count + 1 + addrSpec.domain.value.utf8.count
         )
         for byte in addrSpec.localPart.utf8 { buffer.append(ASCII.Code(byte)) }
         buffer.append(ASCII.Code.commercialAt)
-        for byte in addrSpec.domain.utf8 { buffer.append(ASCII.Code(byte)) }
+        for byte in addrSpec.domain.value.utf8 { buffer.append(ASCII.Code(byte)) }
     }
 
     public static func serialize<Buffer: RangeReplaceableCollection>(
         _ addrSpec: RFC_2822.AddrSpec,
         into buffer: inout Buffer
     ) where Buffer.Element == Byte {
-        preconditionInjectionSafe(localPart: addrSpec.localPart, domain: addrSpec.domain)
+        preconditionInjectionSafe(localPart: addrSpec.localPart, domain: addrSpec.domain.value)
         buffer.reserveCapacity(
-            buffer.count + addrSpec.localPart.utf8.count + 1 + addrSpec.domain.utf8.count
+            buffer.count + addrSpec.localPart.utf8.count + 1 + addrSpec.domain.value.utf8.count
         )
         for byte in addrSpec.localPart.utf8 { buffer.append(Byte(byte)) }
         buffer.append(ASCII.Code.commercialAt.byte)
-        for byte in addrSpec.domain.utf8 { buffer.append(Byte(byte)) }
+        for byte in addrSpec.domain.value.utf8 { buffer.append(Byte(byte)) }
     }
 }
 
@@ -132,14 +106,27 @@ extension RFC_2822.AddrSpec: ASCII.Parseable {
             throw Error.invalidDomain("")
         }
 
-        try self.init(
-            localPart: String(decoding: localPartBytes, as: UTF8.self),
-            domain: String(decoding: domainBytes, as: UTF8.self)
-        )
+        let localPart = String(decoding: localPartBytes, as: UTF8.self)
+        try Self.validate(localPart: localPart)
+        let domain = try Domain(String(decoding: domainBytes, as: UTF8.self))
+        self.init(__unchecked: (), localPart: localPart, domain: domain)
     }
 }
 
 extension RFC_2822.AddrSpec {
+
+    private static func validate(localPart: String) throws(Error) {
+        guard !localPart.isEmpty else {
+            throw Error.invalidLocalPart("")
+        }
+        let localCodes: [ASCII.Code]
+        do throws(ASCII.Code.Error) {
+            localCodes = try [Byte](utf8: localPart).map { byte throws(ASCII.Code.Error) in try ASCII.Code(byte) }
+        } catch {
+            throw Error.invalidLocalPart(localPart)
+        }
+        try validateLocalPart(localCodes)
+    }
 
     private static func validateLocalPart<Codes: Swift::Collection>(
         _ codes: Codes
@@ -160,26 +147,7 @@ extension RFC_2822.AddrSpec {
         }
     }
 
-    private static func validateDomain<Codes: Swift::Collection>(
-        _ codes: Codes
-    ) throws(Error) where Codes.Element == ASCII.Code {
-        guard let firstCode = codes.first else {
-            throw Error.invalidDomain("")
-        }
-
-        var lastCode = firstCode
-        for code in codes { lastCode = code }
-
-        if firstCode == ASCII.Code.leftSquareBracket && lastCode == ASCII.Code.rightSquareBracket {
-
-            try validateDomainLiteral(codes)
-        } else {
-
-            try validateDotAtom(codes, for: .domain)
-        }
-    }
-
-    private static func validateDotAtom<Codes: Swift::Collection>(
+    static func validateDotAtom<Codes: Swift::Collection>(
         _ codes: Codes,
         for part: Part
     ) throws(Error) where Codes.Element == ASCII.Code {
@@ -249,52 +217,6 @@ extension RFC_2822.AddrSpec {
         }
     }
 
-    private static func validateDomainLiteral<Codes: Swift::Collection>(
-        _ codes: Codes
-    ) throws(Error) where Codes.Element == ASCII.Code {
-        var isEscaped = false
-        var isFirst = true
-        var codeCount = 0
-        let totalCount = codes.count
-
-        for code in codes {
-            codeCount += 1
-
-            if isFirst {
-                isFirst = false
-                continue
-            }
-            if codeCount == totalCount { continue }
-
-            if isEscaped {
-
-                guard
-                    code == ASCII.Code.leftSquareBracket
-                        || code == ASCII.Code.rightSquareBracket
-                        || code == ASCII.Code.reverseSolidus
-                else {
-                    throw Error.invalidDomain(String(ascii: codes))
-                }
-                isEscaped = false
-            } else if code == ASCII.Code.reverseSolidus {
-                isEscaped = true
-            } else {
-
-                let isValidDText =
-                    (code >= 1 && code <= 8) || code == 11 || code == 12
-                    || (code >= 14 && code <= 31) || (code >= 33 && code <= 90)
-                    || (code >= 94 && code <= 126)
-                guard isValidDText else {
-                    throw Error.invalidDomain(String(ascii: codes))
-                }
-            }
-        }
-
-        if isEscaped {
-            throw Error.invalidDomain(String(ascii: codes))
-        }
-    }
-
     private static func errorFor(_ part: Part, _ value: String) -> RFC_2822.AddrSpec.Error {
         switch part {
         case .localPart: return Error.invalidLocalPart(value)
@@ -319,7 +241,7 @@ extension RFC_2822.AddrSpec: Swift::RawRepresentable {
 extension RFC_2822.AddrSpec: CustomStringConvertible {
 
     public var description: String {
-        Self.preconditionInjectionSafe(localPart: localPart, domain: domain)
-        return "\(localPart)@\(domain)"
+        Self.preconditionInjectionSafe(localPart: localPart, domain: domain.value)
+        return "\(localPart)@\(domain.value)"
     }
 }

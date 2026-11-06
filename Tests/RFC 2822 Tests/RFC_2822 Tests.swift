@@ -10,14 +10,14 @@ extension RFC_2822.AddrSpec {
         func `Successfully creates valid addr-spec`() throws {
             let addr = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@example.com"))
             #expect(addr.localPart == "user")
-            #expect(addr.domain == "example.com")
+            #expect(addr.domain.value == "example.com")
         }
 
         @Test
         func `Successfully creates addr-spec with subdomain`() throws {
             let addr = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@mail.example.com"))
             #expect(addr.localPart == "user")
-            #expect(addr.domain == "mail.example.com")
+            #expect(addr.domain.value == "mail.example.com")
         }
 
         @Test
@@ -50,13 +50,13 @@ extension RFC_2822.AddrSpec {
 
             let addr = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "\"a@b\"@example.com"))
             #expect(addr.localPart == "\"a@b\"")
-            #expect(addr.domain == "example.com")
+            #expect(addr.domain.value == "example.com")
         }
 
         @Test
         func `Successfully creates addr-spec with domain literal`() throws {
             let addr = try RFC_2822.AddrSpec(ascii: [Byte](utf8: "user@[192.168.1.1]"))
-            #expect(addr.domain == "[192.168.1.1]")
+            #expect(addr.domain.value == "[192.168.1.1]")
         }
 
         @Test
@@ -191,7 +191,7 @@ extension RFC_2822.AddrSpec.Test {
             )
             let addr = try JSONDecoder().decode(RFC_2822.AddrSpec.self, from: json)
             #expect(addr.localPart == "user")
-            #expect(addr.domain == "example.com")
+            #expect(addr.domain.value == "example.com")
         }
     }
 }
@@ -204,7 +204,7 @@ extension RFC_2822.Mailbox {
             let mailbox = try RFC_2822.Mailbox(ascii: [Byte](utf8: "user@example.com"))
             #expect(mailbox.displayName == nil)
             #expect(mailbox.emailAddress.localPart == "user")
-            #expect(mailbox.emailAddress.domain == "example.com")
+            #expect(mailbox.emailAddress.domain.value == "example.com")
         }
 
         @Test
@@ -280,7 +280,7 @@ extension RFC_2822.Mailbox.Test {
             #expect(throws: RFC_2822.Mailbox.Error.self) {
                 _ = try RFC_2822.Mailbox(
                     displayName: "Evil\r\nBcc: attacker@evil.example",
-                    emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: "example.com")
+                    emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: .init("example.com"))
                 )
             }
         }
@@ -290,7 +290,7 @@ extension RFC_2822.Mailbox.Test {
             #expect(throws: RFC_2822.Mailbox.Error.self) {
                 _ = try RFC_2822.Mailbox(
                     displayName: "Evil\nHeader: injected",
-                    emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: "example.com")
+                    emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: .init("example.com"))
                 )
             }
         }
@@ -300,7 +300,7 @@ extension RFC_2822.Mailbox.Test {
             #expect(throws: RFC_2822.Mailbox.Error.self) {
                 _ = try RFC_2822.Mailbox(
                     displayName: "Evil\rHeader: injected",
-                    emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: "example.com")
+                    emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: .init("example.com"))
                 )
             }
         }
@@ -318,7 +318,7 @@ extension RFC_2822.Mailbox.Test {
         func `Escapes embedded quote and backslash bytes when serializing a display name`() throws {
             let mailbox = try RFC_2822.Mailbox(
                 displayName: "Say \"hi\" \\ folks",
-                emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: "example.com")
+                emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: .init("example.com"))
             )
             #expect(
                 String(mailbox)
@@ -332,7 +332,7 @@ extension RFC_2822.Mailbox.Test {
         {
             let original = try RFC_2822.Mailbox(
                 displayName: "Say \"hi\" \\ folks",
-                emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: "example.com")
+                emailAddress: try RFC_2822.AddrSpec(localPart: "user", domain: .init("example.com"))
             )
             var ascii: [ASCII.Code] = []
             RFC_2822.Mailbox.serialize(original, into: &ascii)
@@ -938,7 +938,7 @@ extension RFC_2822.Fields {
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "sender",
-                            domain: "example.com"
+                            domain: .init("example.com")
                         )
                     )
                 ]
@@ -956,7 +956,7 @@ extension RFC_2822.Fields {
                         displayName: "Sender",
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "sender",
-                            domain: "example.com"
+                            domain: .init("example.com")
                         )
                     )
                 ],
@@ -1009,7 +1009,7 @@ extension RFC_2822.Fields {
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "a",
-                            domain: "b.com"
+                            domain: .init("b.com")
                         )
                     )
                 ]
@@ -1021,7 +1021,7 @@ extension RFC_2822.Fields {
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "a",
-                            domain: "b.com"
+                            domain: .init("b.com")
                         )
                     )
                 ]
@@ -1038,7 +1038,7 @@ extension RFC_2822.Fields {
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "test",
-                            domain: "example.com"
+                            domain: .init("example.com")
                         )
                     )
                 ],
@@ -1090,7 +1090,7 @@ extension RFC_2822.Message {
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "sender",
-                            domain: "example.com"
+                            domain: .init("example.com")
                         )
                     )
                 ]
@@ -1108,7 +1108,7 @@ extension RFC_2822.Message {
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "sender",
-                            domain: "example.com"
+                            domain: .init("example.com")
                         )
                     )
                 ]
@@ -1149,7 +1149,7 @@ extension RFC_2822.Message {
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "a",
-                            domain: "b.com"
+                            domain: .init("b.com")
                         )
                     )
                 ]
@@ -1168,7 +1168,7 @@ extension RFC_2822.Message {
                         displayName: nil,
                         emailAddress: try RFC_2822.AddrSpec(
                             localPart: "test",
-                            domain: "example.com"
+                            domain: .init("example.com")
                         )
                     )
                 ]
@@ -1242,7 +1242,7 @@ extension RFC_2822.Message.Body {
 @Suite("RFC 2822 [FAM-012] ASCII==Binary Equivalence")
 struct ASCIIBinaryEquivalenceTests {
     private func addrSpec() throws -> RFC_2822.AddrSpec {
-        try RFC_2822.AddrSpec(localPart: "john", domain: "example.com")
+        try RFC_2822.AddrSpec(localPart: "john", domain: .init("example.com"))
     }
     private func mailbox() throws -> RFC_2822.Mailbox {
 
@@ -1250,7 +1250,7 @@ struct ASCIIBinaryEquivalenceTests {
     }
 
     @Test func `AddrSpec verbs agree`() throws {
-        let value = try RFC_2822.AddrSpec(localPart: "user", domain: "example.com")
+        let value = try RFC_2822.AddrSpec(localPart: "user", domain: .init("example.com"))
         var ascii: [ASCII.Code] = []
         RFC_2822.AddrSpec.serialize(value, into: &ascii)
         var wire: [Byte] = []
