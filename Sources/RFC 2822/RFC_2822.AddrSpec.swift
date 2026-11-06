@@ -6,6 +6,8 @@ extension RFC_2822 {
 
     public struct AddrSpec: Sendable, Codable {
         public let localPart: String
+        // swift-linter:disable:next raw concept
+        // REASON: RFC 2822's domain is a dot-atom or a domain literal such as [192.0.2.1], wider than DNS, and Domain, RFC_1123.Domain and RFC_1035.Domain all refuse a literal
         public let domain: String
 
         private init(
@@ -19,6 +21,8 @@ extension RFC_2822 {
 
         public init(
             localPart: String,
+            // swift-linter:disable:next raw concept
+            // REASON: RFC 2822's domain is a dot-atom or a domain literal such as [192.0.2.1], wider than DNS, and Domain, RFC_1123.Domain and RFC_1035.Domain all refuse a literal
             domain: String
         ) throws(Error) {
 
