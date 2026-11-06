@@ -3,7 +3,9 @@ import Testing
 
 @testable import RFC_2822
 
-extension RFC_2822.AddrSpec {
+enum `RFC_2822.AddrSpec Tests` {}
+
+extension `RFC_2822.AddrSpec Tests` {
     @Suite("RFC 2822 AddrSpec Tests")
     struct Test {
         @Test
@@ -149,7 +151,7 @@ extension RFC_2822.AddrSpec {
     }
 }
 
-extension RFC_2822.AddrSpec.Test {
+extension `RFC_2822.AddrSpec Tests`.Test {
 
     @Suite
     struct `Edge Case` {
@@ -196,7 +198,9 @@ extension RFC_2822.AddrSpec.Test {
     }
 }
 
-extension RFC_2822.Mailbox {
+enum `RFC_2822.Mailbox Tests` {}
+
+extension `RFC_2822.Mailbox Tests` {
     @Suite("RFC 2822 Mailbox Tests")
     struct Test {
         @Test
@@ -271,7 +275,7 @@ extension RFC_2822.Mailbox {
     }
 }
 
-extension RFC_2822.Mailbox.Test {
+extension `RFC_2822.Mailbox Tests`.Test {
 
     @Suite
     struct `Edge Case` {
@@ -407,7 +411,9 @@ extension RFC_2822.Mailbox.Test {
     }
 }
 
-extension RFC_2822.Address {
+enum `RFC_2822.Address Tests` {}
+
+extension `RFC_2822.Address Tests` {
     @Suite("RFC 2822 Address Tests")
     struct Test {
         @Test
@@ -477,7 +483,7 @@ extension RFC_2822.Address {
     }
 }
 
-extension RFC_2822.Address.Test {
+extension `RFC_2822.Address Tests`.Test {
 
     @Suite
     struct `Edge Case` {
@@ -626,7 +632,9 @@ extension RFC_2822.Address.Test {
     }
 }
 
-extension RFC_2822.Message.ID {
+enum `RFC_2822.Message.ID Tests` {}
+
+extension `RFC_2822.Message.ID Tests` {
     @Suite("RFC 2822 Message.ID Tests")
     struct Test {
 
@@ -754,7 +762,9 @@ extension RFC_2822.Message.ID {
     }
 }
 
-extension RFC_2822.Timestamp {
+enum `RFC_2822.Timestamp Tests` {}
+
+extension `RFC_2822.Timestamp Tests` {
     @Suite("RFC 2822 Timestamp Tests")
     struct Test {
         @Test
@@ -824,7 +834,7 @@ extension RFC_2822.Timestamp {
     }
 }
 
-extension RFC_2822.Timestamp.Test {
+extension `RFC_2822.Timestamp Tests`.Test {
 
     @Suite
     struct `Edge Case` {
@@ -893,7 +903,7 @@ extension RFC_2822.Timestamp.Test {
     }
 }
 
-extension RFC_2822.Timestamp.Test {
+extension `RFC_2822.Timestamp Tests`.Test {
 
     @Suite
     struct Integration {
@@ -926,7 +936,9 @@ extension RFC_2822.Timestamp.Test {
     }
 }
 
-extension RFC_2822.Fields {
+enum `RFC_2822.Fields Tests` {}
+
+extension `RFC_2822.Fields Tests` {
     @Suite("RFC 2822 Fields Tests")
     struct Test {
         @Test
@@ -1051,7 +1063,7 @@ extension RFC_2822.Fields {
     }
 }
 
-extension RFC_2822.Fields.Test {
+extension `RFC_2822.Fields Tests`.Test {
 
     @Suite
     struct `Edge Case` {
@@ -1078,7 +1090,9 @@ extension RFC_2822.Fields.Test {
     }
 }
 
-extension RFC_2822.Message {
+enum `RFC_2822.Message Tests` {}
+
+extension `RFC_2822.Message Tests` {
     @Suite("RFC 2822 Message Tests")
     struct Test {
         @Test
@@ -1183,7 +1197,9 @@ extension RFC_2822.Message {
     }
 }
 
-extension RFC_2822.Message.Body {
+enum `RFC_2822.Message.Body Tests` {}
+
+extension `RFC_2822.Message.Body Tests` {
     @Suite("RFC 2822 Message.Body Tests")
     struct Test {
         @Test
