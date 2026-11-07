@@ -1255,110 +1255,114 @@ extension `RFC_2822.Message.Body Tests` {
     }
 }
 
-@Suite
-struct `RFC 2822 [FAM-012] ASCII==Binary Equivalence` {
-    private func addrSpec() throws -> RFC_2822.AddrSpec {
-        try RFC_2822.AddrSpec(localPart: "john", domain: .init("example.com"))
-    }
-    private func mailbox() throws -> RFC_2822.Mailbox {
+enum `RFC_2822 Tests` {}
 
-        try RFC_2822.Mailbox(displayName: "Doe, John", emailAddress: try addrSpec())
-    }
+extension `RFC_2822 Tests` {
+    @Suite
+    struct `RFC 2822 [FAM-012] ASCII==Binary Equivalence` {
+        private func addrSpec() throws -> RFC_2822.AddrSpec {
+            try RFC_2822.AddrSpec(localPart: "john", domain: .init("example.com"))
+        }
+        private func mailbox() throws -> RFC_2822.Mailbox {
 
-    @Test func `AddrSpec verbs agree`() throws {
-        let value = try RFC_2822.AddrSpec(localPart: "user", domain: .init("example.com"))
-        var ascii: [ASCII.Code] = []
-        RFC_2822.AddrSpec.serialize(value, into: &ascii)
-        var wire: [Byte] = []
-        RFC_2822.AddrSpec.serialize(value, into: &wire)
-        #expect(ascii.map(\.byte) == wire)
-    }
+            try RFC_2822.Mailbox(displayName: "Doe, John", emailAddress: try addrSpec())
+        }
 
-    @Test func `Timestamp verbs agree`() {
-        let value = RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890)
-        var ascii: [ASCII.Code] = []
-        RFC_2822.Timestamp.serialize(value, into: &ascii)
-        var wire: [Byte] = []
-        RFC_2822.Timestamp.serialize(value, into: &wire)
-        #expect(ascii.map(\.byte) == wire)
-    }
+        @Test func `AddrSpec verbs agree`() throws {
+            let value = try RFC_2822.AddrSpec(localPart: "user", domain: .init("example.com"))
+            var ascii: [ASCII.Code] = []
+            RFC_2822.AddrSpec.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            RFC_2822.AddrSpec.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
 
-    @Test func `NameValuePair verbs agree`() {
-        let value = RFC_2822.Message.Received.NameValuePair(name: "from", value: "mail.example.com")
-        var ascii: [ASCII.Code] = []
-        RFC_2822.Message.Received.NameValuePair.serialize(value, into: &ascii)
-        var wire: [Byte] = []
-        RFC_2822.Message.Received.NameValuePair.serialize(value, into: &wire)
-        #expect(ascii.map(\.byte) == wire)
-    }
+        @Test func `Timestamp verbs agree`() {
+            let value = RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890)
+            var ascii: [ASCII.Code] = []
+            RFC_2822.Timestamp.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            RFC_2822.Timestamp.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
 
-    @Test func `Mailbox verbs agree (escaped display name)`() throws {
-        let value = try mailbox()
-        var ascii: [ASCII.Code] = []
-        RFC_2822.Mailbox.serialize(value, into: &ascii)
-        var wire: [Byte] = []
-        RFC_2822.Mailbox.serialize(value, into: &wire)
-        #expect(ascii.map(\.byte) == wire)
-    }
+        @Test func `NameValuePair verbs agree`() {
+            let value = RFC_2822.Message.Received.NameValuePair(name: "from", value: "mail.example.com")
+            var ascii: [ASCII.Code] = []
+            RFC_2822.Message.Received.NameValuePair.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            RFC_2822.Message.Received.NameValuePair.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
 
-    @Test func `Message.Path verbs agree`() throws {
-        let value = RFC_2822.Message.Path(addrSpec: try addrSpec())
-        var ascii: [ASCII.Code] = []
-        RFC_2822.Message.Path.serialize(value, into: &ascii)
-        var wire: [Byte] = []
-        RFC_2822.Message.Path.serialize(value, into: &wire)
-        #expect(ascii.map(\.byte) == wire)
-    }
+        @Test func `Mailbox verbs agree (escaped display name)`() throws {
+            let value = try mailbox()
+            var ascii: [ASCII.Code] = []
+            RFC_2822.Mailbox.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            RFC_2822.Mailbox.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
 
-    @Test func `Address verbs agree (group)`() throws {
-        let value = RFC_2822.Address(.group("Team", [try mailbox(), try mailbox()]))
-        var ascii: [ASCII.Code] = []
-        RFC_2822.Address.serialize(value, into: &ascii)
-        var wire: [Byte] = []
-        RFC_2822.Address.serialize(value, into: &wire)
-        #expect(ascii.map(\.byte) == wire)
-    }
+        @Test func `Message.Path verbs agree`() throws {
+            let value = RFC_2822.Message.Path(addrSpec: try addrSpec())
+            var ascii: [ASCII.Code] = []
+            RFC_2822.Message.Path.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            RFC_2822.Message.Path.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
 
-    @Test func `Message.Received verbs agree`() throws {
-        let value = RFC_2822.Message.Received(
-            tokens: [
-                RFC_2822.Message.Received.NameValuePair(name: "from", value: "mx.example.org")
-            ],
-            timestamp: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890)
-        )
-        var ascii: [ASCII.Code] = []
-        RFC_2822.Message.Received.serialize(value, into: &ascii)
-        var wire: [Byte] = []
-        RFC_2822.Message.Received.serialize(value, into: &wire)
-        #expect(ascii.map(\.byte) == wire)
-    }
+        @Test func `Address verbs agree (group)`() throws {
+            let value = RFC_2822.Address(.group("Team", [try mailbox(), try mailbox()]))
+            var ascii: [ASCII.Code] = []
+            RFC_2822.Address.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            RFC_2822.Address.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
 
-    @Test func `Message.ResentBlock verbs agree`() throws {
-        let value = RFC_2822.Message.ResentBlock(
-            timestamp: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
-            from: [try mailbox()],
-            to: [RFC_2822.Address(.mailbox(try mailbox()))]
-        )
-        var ascii: [ASCII.Code] = []
-        RFC_2822.Message.ResentBlock.serialize(value, into: &ascii)
-        var wire: [Byte] = []
-        RFC_2822.Message.ResentBlock.serialize(value, into: &wire)
-        #expect(ascii.map(\.byte) == wire)
-    }
+        @Test func `Message.Received verbs agree`() throws {
+            let value = RFC_2822.Message.Received(
+                tokens: [
+                    RFC_2822.Message.Received.NameValuePair(name: "from", value: "mx.example.org")
+                ],
+                timestamp: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890)
+            )
+            var ascii: [ASCII.Code] = []
+            RFC_2822.Message.Received.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            RFC_2822.Message.Received.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
 
-    @Test func `Fields verbs agree (deep composition)`() throws {
-        let value = RFC_2822.Fields(
-            originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
-            from: [try mailbox()],
-            sender: try mailbox(),
-            to: [RFC_2822.Address(.mailbox(try mailbox()))],
-            messageID: try RFC_2822.Message.ID(ascii: [Byte](utf8: "<id@example.com>")),
-            subject: "Re: hello"
-        )
-        var ascii: [ASCII.Code] = []
-        RFC_2822.Fields.serialize(value, into: &ascii)
-        var wire: [Byte] = []
-        RFC_2822.Fields.serialize(value, into: &wire)
-        #expect(ascii.map(\.byte) == wire)
+        @Test func `Message.ResentBlock verbs agree`() throws {
+            let value = RFC_2822.Message.ResentBlock(
+                timestamp: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
+                from: [try mailbox()],
+                to: [RFC_2822.Address(.mailbox(try mailbox()))]
+            )
+            var ascii: [ASCII.Code] = []
+            RFC_2822.Message.ResentBlock.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            RFC_2822.Message.ResentBlock.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
+
+        @Test func `Fields verbs agree (deep composition)`() throws {
+            let value = RFC_2822.Fields(
+                originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
+                from: [try mailbox()],
+                sender: try mailbox(),
+                to: [RFC_2822.Address(.mailbox(try mailbox()))],
+                messageID: try RFC_2822.Message.ID(ascii: [Byte](utf8: "<id@example.com>")),
+                subject: "Re: hello"
+            )
+            var ascii: [ASCII.Code] = []
+            RFC_2822.Fields.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            RFC_2822.Fields.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
     }
 }
