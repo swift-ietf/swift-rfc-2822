@@ -1255,8 +1255,8 @@ extension `RFC_2822.Message.Body Tests` {
     }
 }
 
-@Suite("RFC 2822 [FAM-012] ASCII==Binary Equivalence")
-struct ASCIIBinaryEquivalenceTests {
+@Suite
+struct `RFC 2822 [FAM-012] ASCII==Binary Equivalence` {
     private func addrSpec() throws -> RFC_2822.AddrSpec {
         try RFC_2822.AddrSpec(localPart: "john", domain: .init("example.com"))
     }
