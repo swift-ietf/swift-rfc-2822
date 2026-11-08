@@ -53,11 +53,12 @@ extension RFC_2822.Mailbox.Parse: Parsing {
         }
 
         let displayName: Input?
-        displayName = if open > input.startIndex {
-            input[input.startIndex..<open]
-        } else {
-            nil
-        }
+        displayName =
+            if open > input.startIndex {
+                input[input.startIndex..<open]
+            } else {
+                nil
+            }
 
         let afterOpen = input.index(after: open)
 

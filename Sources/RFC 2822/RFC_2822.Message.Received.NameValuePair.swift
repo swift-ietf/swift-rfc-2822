@@ -94,11 +94,12 @@ extension RFC_2822.Message.Received.NameValuePair: ASCII.Parseable {
                 valueStart += 1
             }
 
-            value = if valueStart < codeArray.count {
-                String(ascii: codeArray[valueStart...])
-            } else {
-                ""
-            }
+            value =
+                if valueStart < codeArray.count {
+                    String(ascii: codeArray[valueStart...])
+                } else {
+                    ""
+                }
         } else {
 
             name = String(ascii: codeArray)

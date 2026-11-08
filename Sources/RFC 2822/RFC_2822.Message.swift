@@ -94,11 +94,12 @@ extension RFC_2822.Message {
 
         if let headerEnd = headerEndIndex, let bodyStart = bodyStartIndex {
             fieldsBytes = Array(byteArray[..<headerEnd])
-            bodyBytes = if bodyStart < byteArray.count {
-                Array(byteArray[bodyStart...])
-            } else {
-                nil
-            }
+            bodyBytes =
+                if bodyStart < byteArray.count {
+                    Array(byteArray[bodyStart...])
+                } else {
+                    nil
+                }
         } else {
 
             fieldsBytes = byteArray
