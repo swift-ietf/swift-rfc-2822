@@ -6,7 +6,7 @@ import Testing
 enum `RFC_2822.AddrSpec Tests` {}
 
 extension `RFC_2822.AddrSpec Tests` {
-    @Suite("RFC 2822 AddrSpec Tests")
+    @Suite
     struct Test {
         @Test
         func `Successfully creates valid addr-spec`() throws {
@@ -201,7 +201,7 @@ extension `RFC_2822.AddrSpec Tests`.Test {
 enum `RFC_2822.Mailbox Tests` {}
 
 extension `RFC_2822.Mailbox Tests` {
-    @Suite("RFC 2822 Mailbox Tests")
+    @Suite
     struct Test {
         @Test
         func `Successfully creates mailbox with just addr-spec`() throws {
@@ -414,7 +414,7 @@ extension `RFC_2822.Mailbox Tests`.Test {
 enum `RFC_2822.Address Tests` {}
 
 extension `RFC_2822.Address Tests` {
-    @Suite("RFC 2822 Address Tests")
+    @Suite
     struct Test {
         @Test
         func `Successfully creates mailbox address`() throws {
@@ -635,7 +635,7 @@ extension `RFC_2822.Address Tests`.Test {
 enum `RFC_2822.Message.ID Tests` {}
 
 extension `RFC_2822.Message.ID Tests` {
-    @Suite("RFC 2822 Message.ID Tests")
+    @Suite
     struct Test {
 
         @Test
@@ -765,7 +765,7 @@ extension `RFC_2822.Message.ID Tests` {
 enum `RFC_2822.Timestamp Tests` {}
 
 extension `RFC_2822.Timestamp Tests` {
-    @Suite("RFC 2822 Timestamp Tests")
+    @Suite
     struct Test {
         @Test
         func `Timestamp creation`() {
@@ -939,7 +939,7 @@ extension `RFC_2822.Timestamp Tests`.Test {
 enum `RFC_2822.Fields Tests` {}
 
 extension `RFC_2822.Fields Tests` {
-    @Suite("RFC 2822 Fields Tests")
+    @Suite
     struct Test {
         @Test
         func `Successfully creates fields with required fields`() throws {
@@ -1093,7 +1093,7 @@ extension `RFC_2822.Fields Tests`.Test {
 enum `RFC_2822.Message Tests` {}
 
 extension `RFC_2822.Message Tests` {
-    @Suite("RFC 2822 Message Tests")
+    @Suite
     struct Test {
         @Test
         func `Successfully creates message with fields only`() throws {
@@ -1200,7 +1200,7 @@ extension `RFC_2822.Message Tests` {
 enum `RFC_2822.Message.Body Tests` {}
 
 extension `RFC_2822.Message.Body Tests` {
-    @Suite("RFC 2822 Message.Body Tests")
+    @Suite
     struct Test {
         @Test
         func `Successfully creates body from string`() {
