@@ -644,7 +644,7 @@ extension `RFC_2822.Message.ID Tests` {
             let ids = [
                 try RFC_2822.Message.ID(ascii: [Byte](utf8: "<unique-id@example.com>")),
                 try RFC_2822.Message.ID(ascii: [Byte](utf8: "<abc.def.123@mail.example.com>")),
-                RFC_2822.Message.ID(idLeft: "plain", idRight: "host.example"),
+                try RFC_2822.Message.ID(idLeft: "plain", idRight: "host.example"),
             ]
             for id in ids {
                 var ascii: [ASCII.Code] = []
@@ -657,7 +657,7 @@ extension `RFC_2822.Message.ID Tests` {
 
         @Test
         func `round-trips through the ASCII verb and the parse init`() throws {
-            let original = RFC_2822.Message.ID(idLeft: "abc", idRight: "example.com")
+            let original = try RFC_2822.Message.ID(idLeft: "abc", idRight: "example.com")
             var ascii: [ASCII.Code] = []
             RFC_2822.Message.ID.serialize(original, into: &ascii)
             let reparsed = try RFC_2822.Message.ID(ascii: ascii.map(\.byte))
@@ -943,7 +943,7 @@ extension `RFC_2822.Fields Tests` {
     struct Test {
         @Test
         func `Successfully creates fields with required fields`() throws {
-            let fields = RFC_2822.Fields(
+            let fields = try RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
                 from: [
                     try RFC_2822.Mailbox(
@@ -961,7 +961,7 @@ extension `RFC_2822.Fields Tests` {
 
         @Test
         func `Successfully creates fields with optional fields`() throws {
-            let fields = RFC_2822.Fields(
+            let fields = try RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
                 from: [
                     try RFC_2822.Mailbox(
@@ -972,7 +972,7 @@ extension `RFC_2822.Fields Tests` {
                         )
                     )
                 ],
-                messageID: RFC_2822.Message.ID(idLeft: "unique", idRight: "example.com"),
+                messageID: try RFC_2822.Message.ID(idLeft: "unique", idRight: "example.com"),
                 subject: "Test Subject"
             )
             #expect(fields.subject == "Test Subject")
@@ -1014,7 +1014,7 @@ extension `RFC_2822.Fields Tests` {
 
         @Test
         func `Successfully tests equality`() throws {
-            let f1 = RFC_2822.Fields(
+            let f1 = try RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1000),
                 from: [
                     try RFC_2822.Mailbox(
@@ -1026,7 +1026,7 @@ extension `RFC_2822.Fields Tests` {
                     )
                 ]
             )
-            let f2 = RFC_2822.Fields(
+            let f2 = try RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1000),
                 from: [
                     try RFC_2822.Mailbox(
@@ -1043,7 +1043,7 @@ extension `RFC_2822.Fields Tests` {
 
         @Test
         func `Successfully encodes and decodes`() throws {
-            let original = RFC_2822.Fields(
+            let original = try RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
                 from: [
                     try RFC_2822.Mailbox(
@@ -1097,7 +1097,7 @@ extension `RFC_2822.Message Tests` {
     struct Test {
         @Test
         func `Successfully creates message with fields only`() throws {
-            let fields = RFC_2822.Fields(
+            let fields = try RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
                 from: [
                     try RFC_2822.Mailbox(
@@ -1115,7 +1115,7 @@ extension `RFC_2822.Message Tests` {
 
         @Test
         func `Successfully creates message with body`() throws {
-            let fields = RFC_2822.Fields(
+            let fields = try RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
                 from: [
                     try RFC_2822.Mailbox(
@@ -1156,7 +1156,7 @@ extension `RFC_2822.Message Tests` {
 
         @Test
         func `Successfully tests equality`() throws {
-            let fields = RFC_2822.Fields(
+            let fields = try RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1000),
                 from: [
                     try RFC_2822.Mailbox(
@@ -1175,7 +1175,7 @@ extension `RFC_2822.Message Tests` {
 
         @Test
         func `Successfully encodes and decodes`() throws {
-            let fields = RFC_2822.Fields(
+            let fields = try RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
                 from: [
                     try RFC_2822.Mailbox(
@@ -1314,7 +1314,7 @@ extension `RFC_2822 Tests` {
         }
 
         @Test func `Address verbs agree (group)`() throws {
-            let value = RFC_2822.Address(.group("Team", [try mailbox(), try mailbox()]))
+            let value = try RFC_2822.Address(.group("Team", [try mailbox(), try mailbox()]))
             var ascii: [ASCII.Code] = []
             RFC_2822.Address.serialize(value, into: &ascii)
             var wire: [Byte] = []
@@ -1340,7 +1340,7 @@ extension `RFC_2822 Tests` {
             let value = RFC_2822.Message.ResentBlock(
                 timestamp: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
                 from: [try mailbox()],
-                to: [RFC_2822.Address(.mailbox(try mailbox()))]
+                to: [try RFC_2822.Address(.mailbox(try mailbox()))]
             )
             var ascii: [ASCII.Code] = []
             RFC_2822.Message.ResentBlock.serialize(value, into: &ascii)
@@ -1350,11 +1350,11 @@ extension `RFC_2822 Tests` {
         }
 
         @Test func `Fields verbs agree (deep composition)`() throws {
-            let value = RFC_2822.Fields(
+            let value = try RFC_2822.Fields(
                 originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 1_234_567_890),
                 from: [try mailbox()],
                 sender: try mailbox(),
-                to: [RFC_2822.Address(.mailbox(try mailbox()))],
+                to: [try RFC_2822.Address(.mailbox(try mailbox()))],
                 messageID: try RFC_2822.Message.ID(ascii: [Byte](utf8: "<id@example.com>")),
                 subject: "Re: hello"
             )
@@ -1364,5 +1364,140 @@ extension `RFC_2822 Tests` {
             RFC_2822.Fields.serialize(value, into: &wire)
             #expect(ascii.map(\.byte) == wire)
         }
+    }
+}
+
+extension `RFC_2822.Address Tests`.Test.`Edge Case` {
+
+    @Test
+    func `Rejects a constructed group display name carrying a CRLF header-injection payload`() {
+        #expect(throws: RFC_2822.Address.Error.invalidDisplayName("Team\r\nBcc: victim@example.com")) {
+            _ = try RFC_2822.Address(.group("Team\r\nBcc: victim@example.com", []))
+        }
+    }
+}
+
+extension `RFC_2822.Message.ID Tests`.Test {
+
+    @Suite
+    struct `Edge Case` {
+        @Test
+        func `Rejects a constructed id-left carrying a CRLF header-injection payload`() {
+            #expect(throws: RFC_2822.Message.ID.Error.invalidIdLeft("a\r\nBcc: x")) {
+                _ = try RFC_2822.Message.ID(idLeft: "a\r\nBcc: x", idRight: "example.com")
+            }
+        }
+
+        @Test
+        func `Rejects a constructed id-right that is not a dot-atom or domain literal`() {
+            #expect(throws: RFC_2822.Message.ID.Error.invalidIdRight("example..com")) {
+                _ = try RFC_2822.Message.ID(idLeft: "abc", idRight: "example..com")
+            }
+        }
+
+        @Test
+        func `Rejects a lone quotation mark as id-left`() {
+            #expect(throws: RFC_2822.Message.ID.Error.invalidIdLeft("\"")) {
+                _ = try RFC_2822.Message.ID(idLeft: "\"", idRight: "example.com")
+            }
+        }
+
+        @Test
+        func `Accepts a quoted id-left and a domain-literal id-right`() throws {
+            let id = try RFC_2822.Message.ID(idLeft: "\"a b\"", idRight: "[127.0.0.1]")
+            #expect(id.description == "<\"a b\"@[127.0.0.1]>")
+        }
+    }
+}
+
+extension `RFC_2822.Fields Tests`.Test.`Edge Case` {
+
+    private func mailbox(_ localPart: String) throws -> RFC_2822.Mailbox {
+        try RFC_2822.Mailbox(
+            emailAddress: try RFC_2822.AddrSpec(localPart: localPart, domain: .init("example.com"))
+        )
+    }
+
+    @Test
+    func `Rejects several From mailboxes without a Sender at construction`() throws {
+        let from = [try mailbox("a"), try mailbox("b")]
+        #expect(throws: RFC_2822.Fields.Error.missingRequiredField("Sender")) {
+            _ = try RFC_2822.Fields(
+                originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 0),
+                from: from
+            )
+        }
+    }
+
+    @Test
+    func `Accepts several From mailboxes with a Sender`() throws {
+        let fields = try RFC_2822.Fields(
+            originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 0),
+            from: [try mailbox("a"), try mailbox("b")],
+            sender: try mailbox("a")
+        )
+        #expect(fields.from.count == 2)
+    }
+
+    @Test
+    func `Rejects several parsed From mailboxes without a Sender`() {
+        let raw =
+            "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: a@example.com, b@example.com\r\n"
+        #expect(throws: RFC_2822.Fields.Error.missingRequiredField("Sender")) {
+            _ = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
+        }
+    }
+
+    @Test
+    func `Rejects an empty From list at construction`() {
+        #expect(throws: RFC_2822.Fields.Error.missingRequiredField("From")) {
+            _ = try RFC_2822.Fields(originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 0), from: [])
+        }
+    }
+
+    @Test
+    func `Rejects a Subject carrying a CRLF header-injection payload`() throws {
+        let from = [try mailbox("a")]
+        #expect(throws: RFC_2822.Fields.Error.invalidFieldFormat("Subject", "Hi\r\nBcc: x@example.com")) {
+            _ = try RFC_2822.Fields(
+                originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 0),
+                from: from,
+                subject: "Hi\r\nBcc: x@example.com"
+            )
+        }
+    }
+
+    @Test
+    func `Rejects Comments carrying a bare LF`() throws {
+        let from = [try mailbox("a")]
+        #expect(throws: RFC_2822.Fields.Error.invalidFieldFormat("Comments", "a\nb")) {
+            _ = try RFC_2822.Fields(
+                originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 0),
+                from: from,
+                comments: "a\nb"
+            )
+        }
+    }
+
+    @Test
+    func `Rejects a keyword carrying a CR`() throws {
+        let from = [try mailbox("a")]
+        #expect(throws: RFC_2822.Fields.Error.invalidFieldFormat("Keywords", "b\rc")) {
+            _ = try RFC_2822.Fields(
+                originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 0),
+                from: from,
+                keywords: ["a", "b\rc"]
+            )
+        }
+    }
+
+    @Test
+    func `Accepts a Subject with a horizontal tab`() throws {
+        let fields = try RFC_2822.Fields(
+            originationDate: RFC_2822.Timestamp(secondsSinceEpoch: 0),
+            from: [try mailbox("a")],
+            subject: "a\tb"
+        )
+        #expect(fields.subject == "a\tb")
     }
 }

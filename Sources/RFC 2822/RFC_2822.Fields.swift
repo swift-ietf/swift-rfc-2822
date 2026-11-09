@@ -83,7 +83,14 @@ extension RFC_2822 {
             receivedFields: [Message.Received] = [],
             returnPath: Message.Path? = nil,
             resentFields: [Message.ResentBlock] = []
-        ) {
+        ) throws(Error) {
+            guard !from.isEmpty else { throw Error.missingRequiredField("From") }
+            if from.count > 1 && sender == nil { throw Error.missingRequiredField("Sender") }
+            if let subject { try Self.validateUnstructured(subject, field: "Subject") }
+            if let comments { try Self.validateUnstructured(comments, field: "Comments") }
+            for keyword in keywords ?? [] {
+                try Self.validateUnstructured(keyword, field: "Keywords")
+            }
             self.init(
                 __unchecked: (),
                 originationDate: originationDate,
@@ -103,16 +110,20 @@ extension RFC_2822 {
                 returnPath: returnPath,
                 resentFields: resentFields
             )
-
-            if from.count > 1 && sender == nil {
-
-                assertionFailure("Sender field required when From contains multiple mailboxes")
-            }
         }
     }
 }
 
-extension RFC_2822.Fields: Hashable {}
+extension RFC_2822.Fields {
+
+    static func validateUnstructured(_ value: String, field: String) throws(Error) {
+        for byte in value.utf8 {
+            guard byte < 0x80, byte != 0x7F, byte >= 0x20 || byte == 0x09 else {
+                throw Error.invalidFieldFormat(field, value)
+            }
+        }
+    }
+}
 
 extension RFC_2822.Fields: ASCII.Serializable, Binary.Serializable {
 
@@ -634,8 +645,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
             throw Error.missingRequiredField("From")
         }
 
-        self.init(
-            __unchecked: (),
+        try self.init(
             originationDate: originationDate,
             from: from,
             sender: sender,

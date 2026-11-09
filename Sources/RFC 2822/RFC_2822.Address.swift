@@ -11,7 +11,14 @@ extension RFC_2822 {
             self.kind = kind
         }
 
-        public init(_ kind: Kind) {
+        public init(_ kind: Kind) throws(Error) {
+            if case .group(let displayName, _) = kind {
+                do throws(RFC_2822.Mailbox.Error) {
+                    try RFC_2822.Mailbox.validateDisplayName(displayName)
+                } catch {
+                    throw Error.invalidDisplayName(displayName)
+                }
+            }
             self.init(__unchecked: (), kind: kind)
         }
     }
