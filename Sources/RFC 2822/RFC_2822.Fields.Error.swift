@@ -7,6 +7,10 @@ extension RFC_2822.Fields {
         case invalidMailbox(RFC_2822.Mailbox.Error)
         case invalidAddress(RFC_2822.Address.Error)
         case invalidMessageID(RFC_2822.Message.ID.Error)
+        case invalidReturnPath(RFC_2822.Message.Path.Error)
+        case invalidReceived(RFC_2822.Message.Received.Error)
+        case invalidResentBlock(RFC_2822.Message.ResentBlock.Error)
+        case misplacedField(_ fieldName: String)
     }
 }
 
@@ -30,6 +34,18 @@ extension RFC_2822.Fields.Error {
 
         case .invalidMessageID(let error):
             return "Invalid message ID: \(error)"
+
+        case .invalidReturnPath(let error):
+            return "Invalid Return-Path: \(error)"
+
+        case .invalidReceived(let error):
+            return "Invalid Received: \(error)"
+
+        case .invalidResentBlock(let error):
+            return "Invalid resent block: \(error)"
+
+        case .misplacedField(let fieldName):
+            return "Field out of trace, resent or origination order: \(fieldName)"
         }
     }
 }

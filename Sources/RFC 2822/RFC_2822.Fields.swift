@@ -166,14 +166,14 @@ extension RFC_2822.Fields: ASCII.Serializable, Binary.Serializable {
             }
         }
 
-        for received in fields.receivedFields {
-            name("Received")
-            RFC_2822.Message.Received.serialize(received, into: &buffer)
-            crlf()
-        }
         if let returnPath = fields.returnPath {
             name("Return-Path")
             RFC_2822.Message.Path.serialize(returnPath, into: &buffer)
+            crlf()
+        }
+        for received in fields.receivedFields {
+            name("Received")
+            RFC_2822.Message.Received.serialize(received, into: &buffer)
             crlf()
         }
         for block in fields.resentFields {
@@ -281,14 +281,14 @@ extension RFC_2822.Fields: ASCII.Serializable, Binary.Serializable {
             }
         }
 
-        for received in fields.receivedFields {
-            name("Received")
-            RFC_2822.Message.Received.serialize(received, into: &buffer)
-            crlf()
-        }
         if let returnPath = fields.returnPath {
             name("Return-Path")
             RFC_2822.Message.Path.serialize(returnPath, into: &buffer)
+            crlf()
+        }
+        for received in fields.receivedFields {
+            name("Received")
+            RFC_2822.Message.Received.serialize(received, into: &buffer)
             crlf()
         }
         for block in fields.resentFields {
@@ -498,9 +498,95 @@ extension RFC_2822.Fields: ASCII.Parseable {
         var subject: String?
         var comments: String?
         var keywords: [String]?
+        var receivedFields: [RFC_2822.Message.Received] = []
+        var returnPath: RFC_2822.Message.Path?
+        var resentFields: [RFC_2822.Message.ResentBlock] = []
+
+        let resentFieldNames: [String: String] = [
+            "resent-date": "Resent-Date",
+            "resent-from": "Resent-From",
+            "resent-sender": "Resent-Sender",
+            "resent-to": "Resent-To",
+            "resent-cc": "Resent-Cc",
+            "resent-bcc": "Resent-Bcc",
+            "resent-message-id": "Resent-Message-ID",
+        ]
+        let originationFieldNames: Set<String> = [
+            "date", "from", "sender", "reply-to", "to", "cc", "bcc",
+            "message-id", "in-reply-to", "references", "subject", "comments", "keywords",
+        ]
+
+        var resentLines: [ASCII.Code] = []
+        var resentNamesInBlock: Set<String> = []
+        var awaitingReceived = false
+        var inOrigination = false
+
+        func closeResentBlock() throws(Error) {
+            guard !resentLines.isEmpty else { return }
+            do throws(RFC_2822.Message.ResentBlock.Error) {
+                resentFields.append(try RFC_2822.Message.ResentBlock(ascii: resentLines.map(\.byte)))
+            } catch {
+                throw Error.invalidResentBlock(error)
+            }
+            resentLines = []
+            resentNamesInBlock = []
+        }
 
         for (nameCodes, valueCodes) in headers {
             let valueBytes = valueCodes.map(\.byte)
+            let fieldName = String(ascii: nameCodes).lowercased()
+
+            if awaitingReceived && fieldName != "received"
+                && (fieldName == "return-path" || resentFieldNames[fieldName] != nil
+                    || originationFieldNames.contains(fieldName))
+            {
+                throw Error.misplacedField("Return-Path")
+            }
+
+            if fieldName == "return-path" {
+                guard !inOrigination && returnPath == nil else {
+                    throw Error.misplacedField("Return-Path")
+                }
+                try closeResentBlock()
+                do throws(RFC_2822.Message.Path.Error) {
+                    returnPath = try RFC_2822.Message.Path(ascii: valueBytes)
+                } catch {
+                    throw Error.invalidReturnPath(error)
+                }
+                awaitingReceived = true
+                continue
+            }
+
+            if fieldName == "received" {
+                guard !inOrigination else { throw Error.misplacedField("Received") }
+                try closeResentBlock()
+                do throws(RFC_2822.Message.Received.Error) {
+                    receivedFields.append(try RFC_2822.Message.Received(ascii: valueBytes))
+                } catch {
+                    throw Error.invalidReceived(error)
+                }
+                awaitingReceived = false
+                continue
+            }
+
+            if let resentFieldName = resentFieldNames[fieldName] {
+                guard !inOrigination else { throw Error.misplacedField(resentFieldName) }
+                if resentNamesInBlock.contains(fieldName) { try closeResentBlock() }
+                resentNamesInBlock.insert(fieldName)
+                resentLines.append(contentsOf: nameCodes)
+                resentLines.append(ASCII.Code.colon)
+                resentLines.append(ASCII.Code.space)
+                resentLines.append(contentsOf: valueCodes)
+                resentLines.append(ASCII.Code.cr)
+                resentLines.append(ASCII.Code.lf)
+                continue
+            }
+
+            if originationFieldNames.contains(fieldName) {
+                try closeResentBlock()
+                inOrigination = true
+            }
+
             if codesEqualCaseInsensitive(nameCodes, "date") {
                 do throws(RFC_2822.Timestamp.Error) {
                     date = try RFC_2822.Timestamp(ascii: valueBytes)
@@ -638,6 +724,9 @@ extension RFC_2822.Fields: ASCII.Parseable {
 
         }
 
+        try closeResentBlock()
+        if awaitingReceived { throw Error.misplacedField("Return-Path") }
+
         guard let originationDate = date else {
             throw Error.missingRequiredField("Date")
         }
@@ -659,9 +748,9 @@ extension RFC_2822.Fields: ASCII.Parseable {
             subject: subject,
             comments: comments,
             keywords: keywords,
-            receivedFields: [],
-            returnPath: nil,
-            resentFields: []
+            receivedFields: receivedFields,
+            returnPath: returnPath,
+            resentFields: resentFields
         )
     }
 }

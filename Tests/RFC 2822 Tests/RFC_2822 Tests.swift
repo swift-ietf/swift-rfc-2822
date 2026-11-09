@@ -1501,3 +1501,153 @@ extension `RFC_2822.Fields Tests`.Test.`Edge Case` {
         #expect(fields.subject == "a\tb")
     }
 }
+
+extension `RFC_2822.Fields Tests`.Test {
+
+    @Suite
+    struct `Trace and Resent` {
+        @Test
+        func `Parses the RFC 2822 appendix A.4 trace fields in order`() throws {
+            let raw =
+                "Received: from x.y.test\r\n"
+                + "   by example.net\r\n"
+                + "   via TCP\r\n"
+                + "   with ESMTP\r\n"
+                + "   id ABC12345\r\n"
+                + "   for <mary@example.net>;  21 Nov 1997 10:05:43 -0600\r\n"
+                + "Received: from machine.example by x.y.test; 21 Nov 1997 10:01:22 -0600\r\n"
+                + "From: John Doe <jdoe@machine.example>\r\n"
+                + "To: Mary Smith <mary@example.net>\r\n"
+                + "Subject: Saying Hello\r\n"
+                + "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "Message-ID: <1234@local.machine.example>\r\n"
+            let fields = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
+            #expect(fields.receivedFields.count == 2)
+            #expect(fields.receivedFields.first?.tokens.first?.value == "x.y.test")
+            #expect(fields.receivedFields.last?.tokens.first?.value == "machine.example")
+            #expect(fields.returnPath == nil)
+        }
+
+        @Test
+        func `Parses the RFC 2822 appendix A.3 resent block`() throws {
+            let raw =
+                "Resent-From: Mary Smith <mary@example.net>\r\n"
+                + "Resent-To: Jane Brown <j-brown@other.example>\r\n"
+                + "Resent-Date: Mon, 24 Nov 1997 14:22:01 -0800\r\n"
+                + "Resent-Message-ID: <78910@example.net>\r\n"
+                + "From: John Doe <jdoe@machine.example>\r\n"
+                + "To: Mary Smith <mary@example.net>\r\n"
+                + "Subject: Saying Hello\r\n"
+                + "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "Message-ID: <1234@local.machine.example>\r\n"
+            let fields = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
+            #expect(fields.resentFields.count == 1)
+            #expect(fields.resentFields.first?.from.first?.emailAddress.localPart == "mary")
+            #expect(fields.resentFields.first?.messageID?.idLeft == "78910")
+            #expect(fields.resentFields.first?.to?.count == 1)
+        }
+
+        @Test
+        func `Parses Return-Path, repeated Received and two resent blocks, and round-trips`() throws {
+            let raw =
+                "Return-Path: <jdoe@machine.example>\r\n"
+                + "Received: from a.example by b.example; Mon, 24 Nov 1997 14:22:05 -0800\r\n"
+                + "Received: from c.example by a.example; Mon, 24 Nov 1997 14:22:03 -0800\r\n"
+                + "Resent-Date: Mon, 24 Nov 1997 14:22:01 -0800\r\n"
+                + "Resent-From: mary@example.net\r\n"
+                + "Resent-Date: Sun, 23 Nov 1997 10:00:00 -0800\r\n"
+                + "Resent-From: jane@example.net\r\n"
+                + "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "From: jdoe@machine.example\r\n"
+            let fields = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
+            #expect(fields.returnPath?.addrSpec?.localPart == "jdoe")
+            #expect(fields.receivedFields.count == 2)
+            #expect(fields.resentFields.count == 2)
+            #expect(fields.resentFields.first?.from.first?.emailAddress.localPart == "mary")
+            #expect(fields.resentFields.last?.from.first?.emailAddress.localPart == "jane")
+            let reparsed = try RFC_2822.Fields(ascii: [Byte](utf8: fields.description))
+            #expect(reparsed == fields)
+        }
+
+        @Test
+        func `Rejects a Return-Path that no Received follows`() {
+            let raw =
+                "Return-Path: <jdoe@machine.example>\r\n"
+                + "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "From: jdoe@machine.example\r\n"
+            #expect(throws: RFC_2822.Fields.Error.misplacedField("Return-Path")) {
+                _ = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
+            }
+        }
+
+        @Test
+        func `Rejects a Received after the origination fields`() {
+            let raw =
+                "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "From: jdoe@machine.example\r\n"
+                + "Received: from a.example by b.example; Mon, 24 Nov 1997 14:22:05 -0800\r\n"
+            #expect(throws: RFC_2822.Fields.Error.misplacedField("Received")) {
+                _ = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
+            }
+        }
+
+        @Test
+        func `Rejects a resent field after the origination fields`() {
+            let raw =
+                "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "From: jdoe@machine.example\r\n"
+                + "Resent-From: mary@example.net\r\n"
+            #expect(throws: RFC_2822.Fields.Error.misplacedField("Resent-From")) {
+                _ = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
+            }
+        }
+
+        @Test
+        func `Rejects a resent block without Resent-Date`() {
+            let raw =
+                "Resent-From: mary@example.net\r\n"
+                + "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "From: jdoe@machine.example\r\n"
+            #expect(throws: RFC_2822.Fields.Error.self) {
+                _ = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
+            }
+        }
+
+        @Test
+        func `Rejects a resent block with an unparseable Resent-From`() {
+            let raw =
+                "Resent-Date: Mon, 24 Nov 1997 14:22:01 -0800\r\n"
+                + "Resent-From: not an address\r\n"
+                + "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "From: jdoe@machine.example\r\n"
+            #expect(throws: RFC_2822.Fields.Error.self) {
+                _ = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
+            }
+        }
+
+        @Test
+        func `Rejects an unparseable Received`() {
+            let raw =
+                "Received: from a.example by b.example\r\n"
+                + "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "From: jdoe@machine.example\r\n"
+            #expect(throws: RFC_2822.Fields.Error.self) {
+                _ = try RFC_2822.Fields(ascii: [Byte](utf8: raw))
+            }
+        }
+    }
+}
+
+extension `RFC_2822.Fields Tests`.Test.`Edge Case` {
+
+    @Test
+    func `Resent block parsing rejects a Resent-To it cannot parse`() {
+        let raw =
+            "Resent-Date: Mon, 24 Nov 1997 14:22:01 -0800\r\n"
+            + "Resent-From: mary@example.net\r\n"
+            + "Resent-To: <broken\r\n"
+        #expect(throws: RFC_2822.Message.ResentBlock.Error.self) {
+            _ = try RFC_2822.Message.ResentBlock(ascii: [Byte](utf8: raw))
+        }
+    }
+}
