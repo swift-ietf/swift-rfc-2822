@@ -1,6 +1,6 @@
 extension RFC_2822.Timestamp {
 
-    public enum Month: Int, Sendable, Codable, Hashable, CaseIterable {
+    public enum Month: Int, Sendable, Hashable, CaseIterable {
         case january = 1
         case february
         case march
@@ -35,3 +35,7 @@ extension RFC_2822.Timestamp.Month {
         }
     }
 }
+
+#if !hasFeature(Embedded)
+    extension RFC_2822.Timestamp.Month: Codable {}
+#endif

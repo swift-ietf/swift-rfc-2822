@@ -4,7 +4,7 @@ import INCITS_4_1986
 
 extension RFC_2822.Message {
 
-    public struct ID: Sendable, Codable {
+    public struct ID: Sendable {
         public let idLeft: String
         public let idRight: String
 
@@ -229,3 +229,7 @@ extension RFC_2822.Message.ID: CustomStringConvertible {
         "<\(idLeft)@\(idRight)>"
     }
 }
+
+#if !hasFeature(Embedded)
+    extension RFC_2822.Message.ID: Codable {}
+#endif

@@ -4,7 +4,7 @@ import INCITS_4_1986
 
 extension RFC_2822 {
 
-    public struct Timestamp: Sendable, Codable {
+    public struct Timestamp: Sendable {
 
         public let dayOfWeek: DayOfWeek?
         public let day: Int
@@ -445,3 +445,7 @@ extension RFC_2822.Timestamp: CustomStringConvertible {
         Self.text(for: self)
     }
 }
+
+#if !hasFeature(Embedded)
+    extension RFC_2822.Timestamp: Codable {}
+#endif

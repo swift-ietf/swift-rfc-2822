@@ -4,7 +4,7 @@ import INCITS_4_1986
 
 extension RFC_2822.Message {
 
-    public struct Received: Hashable, Sendable, Codable {
+    public struct Received: Hashable, Sendable {
         public let tokens: [NameValuePair]
         public let timestamp: RFC_2822.Timestamp
 
@@ -148,3 +148,7 @@ extension RFC_2822.Message.Received: CustomStringConvertible {
         return "\(pairs); \(timestamp)"
     }
 }
+
+#if !hasFeature(Embedded)
+    extension RFC_2822.Message.Received: Codable {}
+#endif

@@ -3,7 +3,7 @@ import INCITS_4_1986
 
 extension RFC_2822 {
 
-    public struct Message: Sendable, Codable {
+    public struct Message: Sendable {
         public let fields: Fields
         public let body: Body?
 
@@ -142,3 +142,7 @@ extension RFC_2822.Message: CustomStringConvertible {
         return String(decoding: out, as: UTF8.self)
     }
 }
+
+#if !hasFeature(Embedded)
+    extension RFC_2822.Message: Codable {}
+#endif

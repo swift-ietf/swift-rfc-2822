@@ -4,7 +4,7 @@ import INCITS_4_1986
 
 extension RFC_2822 {
 
-    public struct Mailbox: Hashable, Sendable, Codable {
+    public struct Mailbox: Hashable, Sendable {
         public let displayName: String?
         public let emailAddress: AddrSpec
 
@@ -223,3 +223,7 @@ extension RFC_2822.Mailbox: CustomStringConvertible {
         return "\"\(escaped)\" <\(emailAddress)>"
     }
 }
+
+#if !hasFeature(Embedded)
+    extension RFC_2822.Mailbox: Codable {}
+#endif

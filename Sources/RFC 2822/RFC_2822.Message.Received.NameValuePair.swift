@@ -4,7 +4,7 @@ import INCITS_4_1986
 
 extension RFC_2822.Message.Received {
 
-    public struct NameValuePair: Hashable, Sendable, Codable {
+    public struct NameValuePair: Hashable, Sendable {
         public let name: String
         public let value: String
 
@@ -131,3 +131,7 @@ extension RFC_2822.Message.Received.NameValuePair: CustomStringConvertible {
         value.isEmpty ? name : "\(name) \(value)"
     }
 }
+
+#if !hasFeature(Embedded)
+    extension RFC_2822.Message.Received.NameValuePair: Codable {}
+#endif

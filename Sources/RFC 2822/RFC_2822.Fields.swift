@@ -4,7 +4,7 @@ import INCITS_4_1986
 
 extension RFC_2822 {
 
-    public struct Fields: Sendable, Codable {
+    public struct Fields: Sendable {
 
         public let originationDate: RFC_2822.Timestamp
         public let from: [Mailbox]
@@ -776,3 +776,7 @@ extension RFC_2822.Fields: CustomStringConvertible {
         return String(decoding: out, as: UTF8.self)
     }
 }
+
+#if !hasFeature(Embedded)
+    extension RFC_2822.Fields: Codable {}
+#endif

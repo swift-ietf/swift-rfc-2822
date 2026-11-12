@@ -4,7 +4,7 @@ import INCITS_4_1986
 
 extension RFC_2822.Message {
 
-    public struct ResentBlock: Hashable, Sendable, Codable {
+    public struct ResentBlock: Hashable, Sendable {
         public let timestamp: RFC_2822.Timestamp
         public let from: [RFC_2822.Mailbox]
         public let sender: RFC_2822.Mailbox?
@@ -410,3 +410,7 @@ extension RFC_2822.Message.ResentBlock: CustomStringConvertible {
         return lines.map { "\($0)\r\n" }.joined()
     }
 }
+
+#if !hasFeature(Embedded)
+    extension RFC_2822.Message.ResentBlock: Codable {}
+#endif

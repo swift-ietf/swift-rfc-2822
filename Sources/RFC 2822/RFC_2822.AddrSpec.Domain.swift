@@ -5,7 +5,7 @@ import INCITS_4_1986
 extension RFC_2822.AddrSpec {
 
     /// An addr-spec's domain: a dot-atom, or a domain literal such as `[192.0.2.1]`, which DNS names don't cover.
-    public struct Domain: Sendable, Codable {
+    public struct Domain: Sendable {
 
         public let value: String
 
@@ -121,3 +121,7 @@ extension RFC_2822.AddrSpec.Domain {
         }
     }
 }
+
+#if !hasFeature(Embedded)
+    extension RFC_2822.AddrSpec.Domain: Codable {}
+#endif

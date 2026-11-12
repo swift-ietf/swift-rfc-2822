@@ -4,7 +4,7 @@ import INCITS_4_1986
 
 extension RFC_2822 {
 
-    public struct Address: Sendable, Codable {
+    public struct Address: Sendable {
         public let kind: Kind
 
         init(__unchecked: Void, kind: Kind) {
@@ -25,7 +25,7 @@ extension RFC_2822 {
 }
 
 extension RFC_2822.Address {
-    public enum Kind: Hashable, Sendable, Codable {
+    public enum Kind: Hashable, Sendable {
         case mailbox(RFC_2822.Mailbox)
         case group(String, [RFC_2822.Mailbox])
     }
@@ -319,3 +319,8 @@ extension RFC_2822.Address: CustomStringConvertible {
         }
     }
 }
+
+#if !hasFeature(Embedded)
+    extension RFC_2822.Address: Codable {}
+    extension RFC_2822.Address.Kind: Codable {}
+#endif

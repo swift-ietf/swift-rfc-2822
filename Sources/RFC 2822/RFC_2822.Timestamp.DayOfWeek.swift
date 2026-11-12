@@ -1,6 +1,6 @@
 extension RFC_2822.Timestamp {
 
-    public enum DayOfWeek: Int, Sendable, Codable, Hashable, CaseIterable {
+    public enum DayOfWeek: Int, Sendable, Hashable, CaseIterable {
         case monday, tuesday, wednesday, thursday, friday, saturday, sunday
     }
 }
@@ -19,3 +19,7 @@ extension RFC_2822.Timestamp.DayOfWeek {
         }
     }
 }
+
+#if !hasFeature(Embedded)
+    extension RFC_2822.Timestamp.DayOfWeek: Codable {}
+#endif

@@ -4,7 +4,7 @@ import INCITS_4_1986
 
 extension RFC_2822.Message {
 
-    public struct Path: Hashable, Sendable, Codable {
+    public struct Path: Hashable, Sendable {
         public let addrSpec: RFC_2822.AddrSpec?
 
         init(__unchecked: Void, addrSpec: RFC_2822.AddrSpec?) {
@@ -112,3 +112,7 @@ extension RFC_2822.Message.Path: CustomStringConvertible {
         "<\(addrSpec?.description ?? "")>"
     }
 }
+
+#if !hasFeature(Embedded)
+    extension RFC_2822.Message.Path: Codable {}
+#endif

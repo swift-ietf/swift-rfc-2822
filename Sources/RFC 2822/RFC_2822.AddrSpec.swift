@@ -4,7 +4,7 @@ import INCITS_4_1986
 
 extension RFC_2822 {
 
-    public struct AddrSpec: Sendable, Codable {
+    public struct AddrSpec: Sendable {
         public let localPart: String
         public let domain: Domain
 
@@ -245,3 +245,7 @@ extension RFC_2822.AddrSpec: CustomStringConvertible {
         return "\(localPart)@\(domain.value)"
     }
 }
+
+#if !hasFeature(Embedded)
+    extension RFC_2822.AddrSpec: Codable {}
+#endif

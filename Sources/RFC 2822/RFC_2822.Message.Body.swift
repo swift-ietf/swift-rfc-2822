@@ -54,19 +54,21 @@ extension RFC_2822.Message.Body: CustomStringConvertible {
     }
 }
 
-extension RFC_2822.Message.Body: Codable {
-    public func encode(to encoder: any Encoder) throws {
-        var container = encoder.singleValueContainer()
+#if !hasFeature(Embedded)
+    extension RFC_2822.Message.Body: Codable {
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.singleValueContainer()
 
-        try container.encode(String(self))
-    }
+            try container.encode(String(self))
+        }
 
-    public init(from decoder: any Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        let string = try container.decode(String.self)
-        self.init(string)
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            let string = try container.decode(String.self)
+            self.init(string)
+        }
     }
-}
+#endif
 
 extension RFC_2822.Message.Body: ExpressibleByStringLiteral {
     public init(stringLiteral value: String) {
