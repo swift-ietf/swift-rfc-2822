@@ -31,45 +31,47 @@ extension RFC_2822.Address {
     }
 }
 
-extension RFC_2822.Address.Kind {
-    private enum CodingKeys: String, CodingKey {
-        case mailbox
-        case group
-    }
+#if !hasFeature(Embedded)
+    extension RFC_2822.Address.Kind {
+        private enum CodingKeys: String, CodingKey {
+            case mailbox
+            case group
+        }
 
-    private enum PayloadKeys: String, CodingKey {
-        case _0
-        case _1
-    }
+        private enum PayloadKeys: String, CodingKey {
+            case _0
+            case _1
+        }
 
-    public init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        if container.contains(.mailbox) {
-            let payload = try container.nestedContainer(
-                keyedBy: PayloadKeys.self,
-                forKey: .mailbox
-            )
-            let mailbox = try payload.decode(RFC_2822.Mailbox.self, forKey: ._0)
-            self = .mailbox(mailbox)
-        } else if container.contains(.group) {
-            let payload = try container.nestedContainer(
-                keyedBy: PayloadKeys.self,
-                forKey: .group
-            )
-            let displayName = try payload.decode(String.self, forKey: ._0)
-            let members = try payload.decode([RFC_2822.Mailbox].self, forKey: ._1)
-            try RFC_2822.Mailbox.validateDisplayName(displayName)
-            self = .group(displayName, members)
-        } else {
-            throw DecodingError.dataCorrupted(
-                DecodingError.Context(
-                    codingPath: container.codingPath,
-                    debugDescription: "Expected a 'mailbox' or 'group' key"
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            if container.contains(.mailbox) {
+                let payload = try container.nestedContainer(
+                    keyedBy: PayloadKeys.self,
+                    forKey: .mailbox
                 )
-            )
+                let mailbox = try payload.decode(RFC_2822.Mailbox.self, forKey: ._0)
+                self = .mailbox(mailbox)
+            } else if container.contains(.group) {
+                let payload = try container.nestedContainer(
+                    keyedBy: PayloadKeys.self,
+                    forKey: .group
+                )
+                let displayName = try payload.decode(String.self, forKey: ._0)
+                let members = try payload.decode([RFC_2822.Mailbox].self, forKey: ._1)
+                try RFC_2822.Mailbox.validateDisplayName(displayName)
+                self = .group(displayName, members)
+            } else {
+                throw DecodingError.dataCorrupted(
+                    DecodingError.Context(
+                        codingPath: container.codingPath,
+                        debugDescription: "Expected a 'mailbox' or 'group' key"
+                    )
+                )
+            }
         }
     }
-}
+#endif
 
 extension RFC_2822.Address {
 
