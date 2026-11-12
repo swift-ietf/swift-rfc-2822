@@ -84,7 +84,7 @@ extension RFC_2822.Message.Received: ASCII.Parseable {
 
         let timestamp: RFC_2822.Timestamp
         do throws(RFC_2822.Timestamp.Error) {
-            timestamp = try RFC_2822.Timestamp(ascii: timestampCodes.map(\.byte))
+            timestamp = try RFC_2822.Timestamp(ascii: timestampCodes.map({ $0.byte }))
         } catch {
             throw Error.invalidTimestamp(error)
         }
@@ -144,7 +144,7 @@ extension RFC_2822.Message.Received: Swift::RawRepresentable {
 extension RFC_2822.Message.Received: CustomStringConvertible {
 
     public var description: String {
-        let pairs = tokens.map(\.description).joined(separator: " ")
+        let pairs = tokens.map({ $0.description }).joined(separator: " ")
         return "\(pairs); \(timestamp)"
     }
 }

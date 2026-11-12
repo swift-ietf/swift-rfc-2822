@@ -157,7 +157,7 @@ extension RFC_2822.Mailbox: ASCII.Parseable {
             }
 
             let addrSpecStart = codeArray.index(after: openIndex)
-            let addrSpecBytes = codeArray[addrSpecStart..<closeIndex].map(\.byte)
+            let addrSpecBytes = codeArray[addrSpecStart..<closeIndex].map({ $0.byte })
 
             let emailAddress: RFC_2822.AddrSpec
             do throws(RFC_2822.AddrSpec.Error) {

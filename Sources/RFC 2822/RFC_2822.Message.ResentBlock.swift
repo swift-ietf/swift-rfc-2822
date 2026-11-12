@@ -278,7 +278,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
             let fieldValueCodes = trimWhitespace(Array(line[(colonIndex + 1)...]))
 
             let fieldName = String(ascii: fieldNameCodes).lowercased()
-            let fieldValueBytes = fieldValueCodes.map(\.byte)
+            let fieldValueBytes = fieldValueCodes.map({ $0.byte })
 
             switch fieldName {
             case "resent-date":
@@ -295,7 +295,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                     let trimmed = trimWhitespace(mailboxCodes)
                     guard !trimmed.isEmpty else { continue }
                     do throws(RFC_2822.Mailbox.Error) {
-                        from.append(try RFC_2822.Mailbox(ascii: trimmed.map(\.byte)))
+                        from.append(try RFC_2822.Mailbox(ascii: trimmed.map({ $0.byte })))
                     } catch {
                         throw Error.invalidMailbox(error)
                     }
@@ -315,7 +315,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                     let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
                     do throws(RFC_2822.Address.Error) {
-                        addresses.append(try RFC_2822.Address(ascii: trimmed.map(\.byte)))
+                        addresses.append(try RFC_2822.Address(ascii: trimmed.map({ $0.byte })))
                     } catch {
                         throw Error.invalidAddress("Resent-To", value: String(ascii: trimmed))
                     }
@@ -329,7 +329,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                     let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
                     do throws(RFC_2822.Address.Error) {
-                        addresses.append(try RFC_2822.Address(ascii: trimmed.map(\.byte)))
+                        addresses.append(try RFC_2822.Address(ascii: trimmed.map({ $0.byte })))
                     } catch {
                         throw Error.invalidAddress("Resent-Cc", value: String(ascii: trimmed))
                     }
@@ -343,7 +343,7 @@ extension RFC_2822.Message.ResentBlock: ASCII.Parseable {
                     let trimmed = trimWhitespace(addressCodes)
                     guard !trimmed.isEmpty else { continue }
                     do throws(RFC_2822.Address.Error) {
-                        addresses.append(try RFC_2822.Address(ascii: trimmed.map(\.byte)))
+                        addresses.append(try RFC_2822.Address(ascii: trimmed.map({ $0.byte })))
                     } catch {
                         throw Error.invalidAddress("Resent-Bcc", value: String(ascii: trimmed))
                     }
@@ -401,11 +401,11 @@ extension RFC_2822.Message.ResentBlock: CustomStringConvertible {
     public var description: String {
         var lines: [String] = []
         lines.append("Resent-Date: \(timestamp)")
-        lines.append("Resent-From: \(from.map(\.description).joined(separator: ", "))")
+        lines.append("Resent-From: \(from.map({ $0.description }).joined(separator: ", "))")
         if let sender { lines.append("Resent-Sender: \(sender)") }
-        if let to { lines.append("Resent-To: \(to.map(\.description).joined(separator: ", "))") }
-        if let cc { lines.append("Resent-Cc: \(cc.map(\.description).joined(separator: ", "))") }
-        if let bcc { lines.append("Resent-Bcc: \(bcc.map(\.description).joined(separator: ", "))") }
+        if let to { lines.append("Resent-To: \(to.map({ $0.description }).joined(separator: ", "))") }
+        if let cc { lines.append("Resent-Cc: \(cc.map({ $0.description }).joined(separator: ", "))") }
+        if let bcc { lines.append("Resent-Bcc: \(bcc.map({ $0.description }).joined(separator: ", "))") }
         if let messageID { lines.append("Resent-Message-ID: \(messageID)") }
         return lines.map { "\($0)\r\n" }.joined()
     }

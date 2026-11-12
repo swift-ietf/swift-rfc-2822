@@ -245,7 +245,7 @@ extension RFC_2822.Address: ASCII.Parseable {
                         }
                         if !trimmed.isEmpty {
                             do throws(RFC_2822.Mailbox.Error) {
-                                let mailbox = try RFC_2822.Mailbox(ascii: trimmed.map(\.byte))
+                                let mailbox = try RFC_2822.Mailbox(ascii: trimmed.map({ $0.byte }))
                                 mailboxes.append(mailbox)
                             } catch {
                                 throw Error.invalidMailbox(error)
@@ -270,7 +270,7 @@ extension RFC_2822.Address: ASCII.Parseable {
                 }
                 if !trimmed.isEmpty {
                     do throws(RFC_2822.Mailbox.Error) {
-                        let mailbox = try RFC_2822.Mailbox(ascii: trimmed.map(\.byte))
+                        let mailbox = try RFC_2822.Mailbox(ascii: trimmed.map({ $0.byte }))
                         mailboxes.append(mailbox)
                     } catch {
                         throw Error.invalidMailbox(error)
@@ -314,7 +314,7 @@ extension RFC_2822.Address: CustomStringConvertible {
         case .group(let displayName, let mailboxes):
             Self.preconditionGroupDisplayNameInjectionSafe(displayName)
             if mailboxes.isEmpty { return "\(displayName):;" }
-            let members = mailboxes.map(\.description).joined(separator: ", ")
+            let members = mailboxes.map({ $0.description }).joined(separator: ", ")
             return "\(displayName): \(members);"
         }
     }

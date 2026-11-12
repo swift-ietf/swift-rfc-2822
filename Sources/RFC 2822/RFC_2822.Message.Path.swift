@@ -75,7 +75,7 @@ extension RFC_2822.Message.Path: ASCII.Parseable {
             throw Error.missingAngleBrackets(String(decoding: bytes, as: UTF8.self))
         }
 
-        let contentBytes = codeArray.dropFirst().dropLast().map(\.byte)
+        let contentBytes = codeArray.dropFirst().dropLast().map({ $0.byte })
 
         if contentBytes.isEmpty {
             self.init(__unchecked: (), addrSpec: nil)

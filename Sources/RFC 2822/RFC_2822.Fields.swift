@@ -524,7 +524,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
         func closeResentBlock() throws(Error) {
             guard !resentLines.isEmpty else { return }
             do throws(RFC_2822.Message.ResentBlock.Error) {
-                resentFields.append(try RFC_2822.Message.ResentBlock(ascii: resentLines.map(\.byte)))
+                resentFields.append(try RFC_2822.Message.ResentBlock(ascii: resentLines.map({ $0.byte })))
             } catch {
                 throw Error.invalidResentBlock(error)
             }
@@ -533,7 +533,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
         }
 
         for (nameCodes, valueCodes) in headers {
-            let valueBytes = valueCodes.map(\.byte)
+            let valueBytes = valueCodes.map({ $0.byte })
             let fieldName = String(ascii: nameCodes).lowercased()
 
             if awaitingReceived && fieldName != "received"
@@ -603,7 +603,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do throws(RFC_2822.Mailbox.Error) {
-                            let mailbox = try RFC_2822.Mailbox(ascii: trimmed.map(\.byte))
+                            let mailbox = try RFC_2822.Mailbox(ascii: trimmed.map({ $0.byte }))
                             from.append(mailbox)
                         } catch {
                             throw Error.invalidMailbox(error)
@@ -623,7 +623,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do throws(RFC_2822.Address.Error) {
-                            let address = try RFC_2822.Address(ascii: trimmed.map(\.byte))
+                            let address = try RFC_2822.Address(ascii: trimmed.map({ $0.byte }))
                             addresses.append(address)
                         } catch {
                             throw Error.invalidAddress(error)
@@ -638,7 +638,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do throws(RFC_2822.Address.Error) {
-                            let address = try RFC_2822.Address(ascii: trimmed.map(\.byte))
+                            let address = try RFC_2822.Address(ascii: trimmed.map({ $0.byte }))
                             addresses.append(address)
                         } catch {
                             throw Error.invalidAddress(error)
@@ -653,7 +653,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do throws(RFC_2822.Address.Error) {
-                            let address = try RFC_2822.Address(ascii: trimmed.map(\.byte))
+                            let address = try RFC_2822.Address(ascii: trimmed.map({ $0.byte }))
                             addresses.append(address)
                         } catch {
                             throw Error.invalidAddress(error)
@@ -668,7 +668,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty {
                         do throws(RFC_2822.Address.Error) {
-                            let address = try RFC_2822.Address(ascii: trimmed.map(\.byte))
+                            let address = try RFC_2822.Address(ascii: trimmed.map({ $0.byte }))
                             addresses.append(address)
                         } catch {
                             throw Error.invalidAddress(error)
@@ -690,7 +690,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty && trimmed.first == ASCII.Code.lessThanSign {
                         do throws(RFC_2822.Message.ID.Error) {
-                            let id = try RFC_2822.Message.ID(ascii: trimmed.map(\.byte))
+                            let id = try RFC_2822.Message.ID(ascii: trimmed.map({ $0.byte }))
                             ids.append(id)
                         } catch {
                             throw Error.invalidMessageID(error)
@@ -705,7 +705,7 @@ extension RFC_2822.Fields: ASCII.Parseable {
                     let trimmed = trimWhitespace(part)
                     if !trimmed.isEmpty && trimmed.first == ASCII.Code.lessThanSign {
                         do throws(RFC_2822.Message.ID.Error) {
-                            let id = try RFC_2822.Message.ID(ascii: trimmed.map(\.byte))
+                            let id = try RFC_2822.Message.ID(ascii: trimmed.map({ $0.byte }))
                             ids.append(id)
                         } catch {
                             throw Error.invalidMessageID(error)
