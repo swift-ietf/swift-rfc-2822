@@ -1,0 +1,23 @@
+extension IETF.RFC.`2822`.Message.Received.NameValuePair {
+
+    public enum Error: Swift::Error, Sendable, Equatable, CustomStringConvertible {
+        case empty
+        case missingValue(_ name: String)
+        case invalidName(_ value: String)
+    }
+}
+
+extension IETF.RFC.`2822`.Message.Received.NameValuePair.Error {
+    public var description: String {
+        switch self {
+        case .empty:
+            return "Name-value pair cannot be empty"
+
+        case .missingValue(let name):
+            return "Name-value pair missing value for name: '\(name)'"
+
+        case .invalidName(let value):
+            return "Invalid name in name-value pair: '\(value)'"
+        }
+    }
+}

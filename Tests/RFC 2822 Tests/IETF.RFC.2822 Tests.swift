@@ -1,0 +1,1653 @@
+import Foundation
+import Testing
+
+@testable import RFC_2822
+
+enum `IETF.RFC.2822.AddrSpec Tests` {}
+
+extension `IETF.RFC.2822.AddrSpec Tests` {
+    @Suite
+    struct Test {
+        @Test
+        func `Successfully creates valid addr-spec`() throws {
+            let addr = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user@example.com"))
+            #expect(addr.localPart == "user")
+            #expect(addr.domain.value == "example.com")
+        }
+
+        @Test
+        func `Successfully creates addr-spec with subdomain`() throws {
+            let addr = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user@mail.example.com"))
+            #expect(addr.localPart == "user")
+            #expect(addr.domain.value == "mail.example.com")
+        }
+
+        @Test
+        func `Successfully creates addr-spec with dots in local part`() throws {
+            let addr = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "first.last@example.com"))
+            #expect(addr.localPart == "first.last")
+        }
+
+        @Test
+        func `Successfully creates addr-spec with plus sign`() throws {
+            let addr = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user+tag@example.com"))
+            #expect(addr.localPart == "user+tag")
+        }
+
+        @Test
+        func `Successfully creates addr-spec with hyphen`() throws {
+            let addr = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user-name@example.com"))
+            #expect(addr.localPart == "user-name")
+        }
+
+        @Test
+        func `Successfully creates addr-spec with quoted local part`() throws {
+
+            let addr = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "\"user.name\"@example.com"))
+            #expect(addr.localPart == "\"user.name\"")
+        }
+
+        @Test
+        func `Successfully creates addr-spec with an at sign inside a quoted local part`() throws {
+
+            let addr = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "\"a@b\"@example.com"))
+            #expect(addr.localPart == "\"a@b\"")
+            #expect(addr.domain.value == "example.com")
+        }
+
+        @Test
+        func `Successfully creates addr-spec with domain literal`() throws {
+            let addr = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user@[192.168.1.1]"))
+            #expect(addr.domain.value == "[192.168.1.1]")
+        }
+
+        @Test
+        func `Fails with empty input`() throws {
+            #expect(throws: IETF.RFC.`2822`.AddrSpec.Error.empty) {
+                _ = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: ""))
+            }
+        }
+
+        @Test
+        func `Fails with missing @ sign`() throws {
+            #expect(throws: IETF.RFC.`2822`.AddrSpec.Error.self) {
+                _ = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "userexample.com"))
+            }
+        }
+
+        @Test
+        func `Fails with empty local part`() throws {
+            #expect(throws: IETF.RFC.`2822`.AddrSpec.Error.self) {
+                _ = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "@example.com"))
+            }
+        }
+
+        @Test
+        func `Fails with empty domain`() throws {
+            #expect(throws: IETF.RFC.`2822`.AddrSpec.Error.self) {
+                _ = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user@"))
+            }
+        }
+
+        @Test
+        func `Fails with local part starting with dot`() throws {
+            #expect(throws: IETF.RFC.`2822`.AddrSpec.Error.self) {
+                _ = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: ".user@example.com"))
+            }
+        }
+
+        @Test
+        func `Fails with local part ending with dot`() throws {
+            #expect(throws: IETF.RFC.`2822`.AddrSpec.Error.self) {
+                _ = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user.@example.com"))
+            }
+        }
+
+        @Test
+        func `Fails with consecutive dots in local part`() throws {
+            #expect(throws: IETF.RFC.`2822`.AddrSpec.Error.self) {
+                _ = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user..name@example.com"))
+            }
+        }
+
+        @Test
+        func `Successfully tests equality`() throws {
+            let addr1 = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user@example.com"))
+            let addr2 = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user@example.com"))
+            let addr3 = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "other@example.com"))
+            #expect(addr1 == addr2)
+            #expect(addr1 != addr3)
+        }
+
+        @Test
+        func `Successfully tests case-insensitive domain equality`() throws {
+            let addr1 = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user@EXAMPLE.COM"))
+            let addr2 = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user@example.com"))
+            #expect(addr1 == addr2)
+        }
+
+        @Test
+        func `Successfully tests hashable`() throws {
+            var set: Set<IETF.RFC.`2822`.AddrSpec> = []
+            set.insert(try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user@example.com")))
+            set.insert(try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user@example.com")))
+            set.insert(try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "other@example.com")))
+            #expect(set.count == 2)
+        }
+
+        @Test
+        func `Successfully encodes and decodes`() throws {
+            let original = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user@example.com"))
+            let encoded = try JSONEncoder().encode(original)
+            let decoded = try JSONDecoder().decode(IETF.RFC.`2822`.AddrSpec.self, from: encoded)
+            #expect(original == decoded)
+        }
+
+        @Test
+        func `Successfully serializes to string`() throws {
+            let addr = try IETF.RFC.`2822`.AddrSpec(ascii: [Byte](utf8: "user@example.com"))
+            #expect(String(addr) == "user@example.com")
+        }
+    }
+}
+
+extension `IETF.RFC.2822.AddrSpec Tests`.Test {
+
+    @Suite
+    struct `Edge Case` {
+        @Test
+        func `Rejects a Codable-decoded raw string carrying a CRLF header-injection payload`()
+            throws
+        {
+            let json = Data(
+                """
+                "user\\r\\nBcc: attacker@evil.example@example.com"
+                """.utf8
+            )
+            #expect(throws: (any Swift::Error).self) {
+                _ = try JSONDecoder().decode(IETF.RFC.`2822`.AddrSpec.self, from: json)
+            }
+        }
+
+        @Test
+        func `Rejects a dictionary-shaped payload — never the real wire shape to begin with`()
+            throws
+        {
+
+            let json = Data(
+                """
+                {"localPart":"user","domain":"example.com"}
+                """.utf8
+            )
+            #expect(throws: (any Swift::Error).self) {
+                _ = try JSONDecoder().decode(IETF.RFC.`2822`.AddrSpec.self, from: json)
+            }
+        }
+
+        @Test
+        func `Still decodes a well-formed raw string via Codable`() throws {
+            let json = Data(
+                """
+                "user@example.com"
+                """.utf8
+            )
+            let addr = try JSONDecoder().decode(IETF.RFC.`2822`.AddrSpec.self, from: json)
+            #expect(addr.localPart == "user")
+            #expect(addr.domain.value == "example.com")
+        }
+    }
+}
+
+enum `IETF.RFC.2822.Mailbox Tests` {}
+
+extension `IETF.RFC.2822.Mailbox Tests` {
+    @Suite
+    struct Test {
+        @Test
+        func `Successfully creates mailbox with just addr-spec`() throws {
+            let mailbox = try IETF.RFC.`2822`.Mailbox(ascii: [Byte](utf8: "user@example.com"))
+            #expect(mailbox.displayName == nil)
+            #expect(mailbox.emailAddress.localPart == "user")
+            #expect(mailbox.emailAddress.domain.value == "example.com")
+        }
+
+        @Test
+        func `Successfully creates mailbox with display name`() throws {
+            let mailbox = try IETF.RFC.`2822`.Mailbox(ascii: [Byte](utf8: "John Doe <john@example.com>"))
+            #expect(mailbox.displayName == "John Doe")
+            #expect(mailbox.emailAddress.localPart == "john")
+        }
+
+        @Test
+        func `Successfully creates mailbox with quoted display name`() throws {
+            let mailbox = try IETF.RFC.`2822`.Mailbox(
+                ascii: [Byte](utf8: "\"John Q. Doe\" <john@example.com>")
+            )
+            #expect(mailbox.displayName == "John Q. Doe")
+        }
+
+        @Test
+        func `Fails with empty input`() throws {
+            #expect(throws: IETF.RFC.`2822`.Mailbox.Error.empty) {
+                _ = try IETF.RFC.`2822`.Mailbox(ascii: [Byte](utf8: ""))
+            }
+        }
+
+        @Test
+        func `Fails with missing closing angle bracket`() throws {
+            #expect(throws: IETF.RFC.`2822`.Mailbox.Error.self) {
+                _ = try IETF.RFC.`2822`.Mailbox(ascii: [Byte](utf8: "John <john@example.com"))
+            }
+        }
+
+        @Test
+        func `Successfully tests equality`() throws {
+            let m1 = try IETF.RFC.`2822`.Mailbox(ascii: [Byte](utf8: "John <john@example.com>"))
+            let m2 = try IETF.RFC.`2822`.Mailbox(ascii: [Byte](utf8: "John <john@example.com>"))
+            let m3 = try IETF.RFC.`2822`.Mailbox(ascii: [Byte](utf8: "Jane <jane@example.com>"))
+            #expect(m1 == m2)
+            #expect(m1 != m3)
+        }
+
+        @Test
+        func `Successfully tests hashable`() throws {
+            var set: Set<IETF.RFC.`2822`.Mailbox> = []
+            set.insert(try IETF.RFC.`2822`.Mailbox(ascii: [Byte](utf8: "john@example.com")))
+            set.insert(try IETF.RFC.`2822`.Mailbox(ascii: [Byte](utf8: "john@example.com")))
+            set.insert(try IETF.RFC.`2822`.Mailbox(ascii: [Byte](utf8: "jane@example.com")))
+            #expect(set.count == 2)
+        }
+
+        @Test
+        func `Successfully encodes and decodes`() throws {
+            let original = try IETF.RFC.`2822`.Mailbox(ascii: [Byte](utf8: "John <john@example.com>"))
+            let encoded = try JSONEncoder().encode(original)
+            let decoded = try JSONDecoder().decode(IETF.RFC.`2822`.Mailbox.self, from: encoded)
+            #expect(original == decoded)
+        }
+
+        @Test
+        func `Successfully serializes to string`() throws {
+            let mailbox = try IETF.RFC.`2822`.Mailbox(ascii: [Byte](utf8: "John <john@example.com>"))
+            let serialized = String(mailbox)
+            #expect(serialized.contains("john@example.com"))
+        }
+    }
+}
+
+extension `IETF.RFC.2822.Mailbox Tests`.Test {
+
+    @Suite
+    struct `Edge Case` {
+        @Test
+        func `Rejects a display name carrying a CRLF header-injection payload`() throws {
+            #expect(throws: IETF.RFC.`2822`.Mailbox.Error.self) {
+                _ = try IETF.RFC.`2822`.Mailbox(
+                    displayName: "Evil\r\nBcc: attacker@evil.example",
+                    emailAddress: try IETF.RFC.`2822`.AddrSpec(localPart: "user", domain: .init("example.com"))
+                )
+            }
+        }
+
+        @Test
+        func `Rejects a display name carrying a bare LF`() throws {
+            #expect(throws: IETF.RFC.`2822`.Mailbox.Error.self) {
+                _ = try IETF.RFC.`2822`.Mailbox(
+                    displayName: "Evil\nHeader: injected",
+                    emailAddress: try IETF.RFC.`2822`.AddrSpec(localPart: "user", domain: .init("example.com"))
+                )
+            }
+        }
+
+        @Test
+        func `Rejects a display name carrying a bare CR`() throws {
+            #expect(throws: IETF.RFC.`2822`.Mailbox.Error.self) {
+                _ = try IETF.RFC.`2822`.Mailbox(
+                    displayName: "Evil\rHeader: injected",
+                    emailAddress: try IETF.RFC.`2822`.AddrSpec(localPart: "user", domain: .init("example.com"))
+                )
+            }
+        }
+
+        @Test
+        func `Rejects a header-injection payload parsed from wire text too`() throws {
+
+            let malicious = "Evil\r\nBcc: attacker@evil.example <john@example.com>"
+            #expect(throws: IETF.RFC.`2822`.Mailbox.Error.self) {
+                _ = try IETF.RFC.`2822`.Mailbox(ascii: [Byte](utf8: malicious))
+            }
+        }
+
+        @Test
+        func `Escapes embedded quote and backslash bytes when serializing a display name`() throws {
+            let mailbox = try IETF.RFC.`2822`.Mailbox(
+                displayName: "Say \"hi\" \\ folks",
+                emailAddress: try IETF.RFC.`2822`.AddrSpec(localPart: "user", domain: .init("example.com"))
+            )
+            #expect(
+                String(mailbox)
+                    == "\"Say \\\"hi\\\" \\\\ folks\" <user@example.com>"
+            )
+        }
+
+        @Test
+        func `A display name with embedded quotes still parses back after escaped serialization`()
+            throws
+        {
+            let original = try IETF.RFC.`2822`.Mailbox(
+                displayName: "Say \"hi\" \\ folks",
+                emailAddress: try IETF.RFC.`2822`.AddrSpec(localPart: "user", domain: .init("example.com"))
+            )
+            var ascii: [ASCII.Code] = []
+            IETF.RFC.`2822`.Mailbox.serialize(original, into: &ascii)
+            let reparsed = try IETF.RFC.`2822`.Mailbox(ascii: ascii.map(\.byte))
+            #expect(reparsed.emailAddress == original.emailAddress)
+        }
+
+        @Test
+        func `Rejects a Codable-decoded raw string carrying a CRLF header-injection payload`()
+            throws
+        {
+            let json = Data(
+                """
+                "Evil\\r\\nBcc: attacker@evil.example <john@example.com>"
+                """.utf8
+            )
+            #expect(throws: (any Swift::Error).self) {
+                _ = try JSONDecoder().decode(IETF.RFC.`2822`.Mailbox.self, from: json)
+            }
+        }
+
+        @Test
+        func `Rejects a Codable-decoded raw string carrying a bare LF`() throws {
+            let json = Data(
+                """
+                "Evil\\nHeader: injected <john@example.com>"
+                """.utf8
+            )
+            #expect(throws: (any Swift::Error).self) {
+                _ = try JSONDecoder().decode(IETF.RFC.`2822`.Mailbox.self, from: json)
+            }
+        }
+
+        @Test
+        func `Rejects a Codable-decoded raw string carrying a bare CR`() throws {
+            let json = Data(
+                """
+                "Evil\\rHeader: injected <john@example.com>"
+                """.utf8
+            )
+            #expect(throws: (any Swift::Error).self) {
+                _ = try JSONDecoder().decode(IETF.RFC.`2822`.Mailbox.self, from: json)
+            }
+        }
+
+        @Test
+        func `Rejects a dictionary-shaped payload — never the real wire shape to begin with`()
+            throws
+        {
+
+            let json = Data(
+                """
+                {"displayName":"Evil\\r\\nBcc: attacker@evil.example","emailAddress":{"localPart":"user","domain":"example.com"}}
+                """.utf8
+            )
+            #expect(throws: (any Swift::Error).self) {
+                _ = try JSONDecoder().decode(IETF.RFC.`2822`.Mailbox.self, from: json)
+            }
+        }
+
+        @Test
+        func `Still decodes a well-formed raw string via Codable`() throws {
+            let json = Data(
+                """
+                "John Doe <john@example.com>"
+                """.utf8
+            )
+            let mailbox = try JSONDecoder().decode(IETF.RFC.`2822`.Mailbox.self, from: json)
+            #expect(mailbox.displayName == "John Doe")
+            #expect(mailbox.emailAddress.localPart == "john")
+        }
+    }
+}
+
+enum `IETF.RFC.2822.Address Tests` {}
+
+extension `IETF.RFC.2822.Address Tests` {
+    @Suite
+    struct Test {
+        @Test
+        func `Successfully creates mailbox address`() throws {
+            let address = try IETF.RFC.`2822`.Address(ascii: [Byte](utf8: "user@example.com"))
+            if case .mailbox(let mailbox) = address.kind {
+                #expect(mailbox.emailAddress.localPart == "user")
+            } else {
+                Issue.record("Expected mailbox address")
+            }
+        }
+
+        @Test
+        func `Successfully creates group address`() throws {
+            let address = try IETF.RFC.`2822`.Address(
+                ascii: [Byte](utf8: "Team: john@example.com, jane@example.com;")
+            )
+            if case .group(let name, let mailboxes) = address.kind {
+                #expect(name == "Team")
+                #expect(mailboxes.count == 2)
+            } else {
+                Issue.record("Expected group address")
+            }
+        }
+
+        @Test
+        func `Successfully creates empty group`() throws {
+            let address = try IETF.RFC.`2822`.Address(ascii: [Byte](utf8: "Empty Group:;"))
+            if case .group(let name, let mailboxes) = address.kind {
+                #expect(name == "Empty Group")
+                #expect(mailboxes.isEmpty)
+            } else {
+                Issue.record("Expected group address")
+            }
+        }
+
+        @Test
+        func `Fails with empty input`() throws {
+            #expect(throws: IETF.RFC.`2822`.Address.Error.empty) {
+                _ = try IETF.RFC.`2822`.Address(ascii: [Byte](utf8: ""))
+            }
+        }
+
+        @Test
+        func `Fails with missing group terminator`() throws {
+            #expect(throws: IETF.RFC.`2822`.Address.Error.self) {
+                _ = try IETF.RFC.`2822`.Address(ascii: [Byte](utf8: "Team: john@example.com"))
+            }
+        }
+
+        @Test
+        func `Successfully tests equality`() throws {
+            let a1 = try IETF.RFC.`2822`.Address(ascii: [Byte](utf8: "user@example.com"))
+            let a2 = try IETF.RFC.`2822`.Address(ascii: [Byte](utf8: "user@example.com"))
+            let a3 = try IETF.RFC.`2822`.Address(ascii: [Byte](utf8: "other@example.com"))
+            #expect(a1 == a2)
+            #expect(a1 != a3)
+        }
+
+        @Test
+        func `Successfully encodes and decodes`() throws {
+            let original = try IETF.RFC.`2822`.Address(ascii: [Byte](utf8: "user@example.com"))
+            let encoded = try JSONEncoder().encode(original)
+            let decoded = try JSONDecoder().decode(IETF.RFC.`2822`.Address.self, from: encoded)
+            #expect(original == decoded)
+        }
+    }
+}
+
+extension `IETF.RFC.2822.Address Tests`.Test {
+
+    @Suite
+    struct `Edge Case` {
+        @Test
+        func `Parses a bare mailbox whose quoted display name contains a colon`() throws {
+            let address = try IETF.RFC.`2822`.Address(
+                ascii: [Byte](utf8: "\"Time: 5pm\" <john@example.com>")
+            )
+            guard case .mailbox(let mailbox) = address.kind else {
+                Issue.record("Expected a mailbox address, got a group")
+                return
+            }
+            #expect(mailbox.displayName == "Time: 5pm")
+            #expect(mailbox.emailAddress.localPart == "john")
+        }
+
+        @Test
+        func `Still parses a real group when the display name has no colon`() throws {
+            let address = try IETF.RFC.`2822`.Address(
+                ascii: [Byte](utf8: "Team: john@example.com, jane@example.com;")
+            )
+            guard case .group(let name, let mailboxes) = address.kind else {
+                Issue.record("Expected a group address, got a mailbox")
+                return
+            }
+            #expect(name == "Team")
+            #expect(mailboxes.count == 2)
+        }
+
+        @Test
+        func
+            `Rejects a group display name carrying a CRLF header-injection payload parsed from wire text`()
+            throws
+        {
+
+            let malicious = "Evil\r\nBcc-attacker-evil-example:john@example.com;"
+            #expect(throws: IETF.RFC.`2822`.Address.Error.self) {
+                _ = try IETF.RFC.`2822`.Address(ascii: [Byte](utf8: malicious))
+            }
+        }
+
+        @Test
+        func `Rejects a Codable-decoded Address raw string whose group display name carries CRLF`()
+            throws
+        {
+
+            let json = Data(
+                """
+                "Evil\\r\\nBcc-attacker-evil-example:john@example.com;"
+                """.utf8
+            )
+            #expect(throws: (any Swift::Error).self) {
+                _ = try JSONDecoder().decode(IETF.RFC.`2822`.Address.self, from: json)
+            }
+        }
+
+        @Test
+        func `Still decodes a well-formed Address raw string via Codable`() throws {
+            let json = Data(
+                """
+                "Team: john@example.com;"
+                """.utf8
+            )
+            let address = try JSONDecoder().decode(IETF.RFC.`2822`.Address.self, from: json)
+            guard case .group(let name, let mailboxes) = address.kind else {
+                Issue.record("Expected a group address, got a mailbox")
+                return
+            }
+            #expect(name == "Team")
+            #expect(mailboxes.count == 1)
+        }
+
+        @Test
+        func
+            `Rejects a Codable-decoded bare Kind whose group display name carries a CRLF header-injection payload`()
+            throws
+        {
+            let json = Data(
+                """
+                {"group":{"_0":"Evil\\r\\nBcc: attacker@evil.example","_1":[]}}
+                """.utf8
+            )
+            #expect(throws: (any Swift::Error).self) {
+                _ = try JSONDecoder().decode(IETF.RFC.`2822`.Address.Kind.self, from: json)
+            }
+        }
+
+        @Test
+        func `Rejects a Codable-decoded bare Kind whose group display name carries a bare LF`()
+            throws
+        {
+            let json = Data(
+                """
+                {"group":{"_0":"Evil\\nHeader: injected","_1":[]}}
+                """.utf8
+            )
+            #expect(throws: (any Swift::Error).self) {
+                _ = try JSONDecoder().decode(IETF.RFC.`2822`.Address.Kind.self, from: json)
+            }
+        }
+
+        @Test
+        func `Rejects a Codable-decoded bare Kind whose group display name carries a bare CR`()
+            throws
+        {
+            let json = Data(
+                """
+                {"group":{"_0":"Evil\\rHeader: injected","_1":[]}}
+                """.utf8
+            )
+            #expect(throws: (any Swift::Error).self) {
+                _ = try JSONDecoder().decode(IETF.RFC.`2822`.Address.Kind.self, from: json)
+            }
+        }
+
+        @Test
+        func `Still decodes a well-formed bare Kind group via Codable`() throws {
+            let json = Data(
+                """
+                {"group":{"_0":"Team","_1":[]}}
+                """.utf8
+            )
+            let kind = try JSONDecoder().decode(IETF.RFC.`2822`.Address.Kind.self, from: json)
+            guard case .group(let name, let mailboxes) = kind else {
+                Issue.record("Expected a group, got a mailbox")
+                return
+            }
+            #expect(name == "Team")
+            #expect(mailboxes.isEmpty)
+        }
+
+        @Test
+        func `Still decodes a well-formed bare Kind mailbox via Codable`() throws {
+            let json = Data(
+                """
+                {"mailbox":{"_0":"John <john@example.com>"}}
+                """.utf8
+            )
+            let kind = try JSONDecoder().decode(IETF.RFC.`2822`.Address.Kind.self, from: json)
+            guard case .mailbox(let mailbox) = kind else {
+                Issue.record("Expected a mailbox, got a group")
+                return
+            }
+            #expect(mailbox.displayName == "John")
+        }
+    }
+}
+
+enum `IETF.RFC.2822.Message.ID Tests` {}
+
+extension `IETF.RFC.2822.Message.ID Tests` {
+    @Suite
+    struct Test {
+
+        @Test
+        func `ASCII and Binary serialization are byte-equivalent`() throws {
+
+            let ids = [
+                try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<unique-id@example.com>")),
+                try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<abc.def.123@mail.example.com>")),
+                try IETF.RFC.`2822`.Message.ID(idLeft: "plain", idRight: "host.example"),
+            ]
+            for id in ids {
+                var ascii: [ASCII.Code] = []
+                IETF.RFC.`2822`.Message.ID.serialize(id, into: &ascii)
+                var wire: [Byte] = []
+                IETF.RFC.`2822`.Message.ID.serialize(id, into: &wire)
+                #expect(ascii.map(\.byte) == wire)
+            }
+        }
+
+        @Test
+        func `round-trips through the ASCII verb and the parse init`() throws {
+            let original = try IETF.RFC.`2822`.Message.ID(idLeft: "abc", idRight: "example.com")
+            var ascii: [ASCII.Code] = []
+            IETF.RFC.`2822`.Message.ID.serialize(original, into: &ascii)
+            let reparsed = try IETF.RFC.`2822`.Message.ID(ascii: ascii.map(\.byte))
+            #expect(reparsed == original)
+            #expect(reparsed.description == "<abc@example.com>")
+        }
+
+        @Test
+        func `Successfully creates valid message ID`() throws {
+            let id = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<unique-id@example.com>"))
+            #expect(id.idLeft == "unique-id")
+            #expect(id.idRight == "example.com")
+        }
+
+        @Test
+        func `Successfully creates message ID with dots`() throws {
+            let id = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<abc.def.123@mail.example.com>"))
+            #expect(id.idLeft == "abc.def.123")
+            #expect(id.idRight == "mail.example.com")
+        }
+
+        @Test
+        func `Successfully creates message ID with whitespace around it`() throws {
+            let id = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "  <id@example.com>  "))
+            #expect(id.idLeft == "id")
+            #expect(id.idRight == "example.com")
+        }
+
+        @Test
+        func `Fails with empty input`() throws {
+            #expect(throws: IETF.RFC.`2822`.Message.ID.Error.empty) {
+                _ = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: ""))
+            }
+        }
+
+        @Test
+        func `Fails with missing angle brackets`() throws {
+            #expect(throws: IETF.RFC.`2822`.Message.ID.Error.self) {
+                _ = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "id@example.com"))
+            }
+        }
+
+        @Test
+        func `Fails with missing @ sign`() throws {
+            #expect(throws: IETF.RFC.`2822`.Message.ID.Error.self) {
+                _ = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<idexample.com>"))
+            }
+        }
+
+        @Test
+        func `Fails with empty id-left`() throws {
+            #expect(throws: IETF.RFC.`2822`.Message.ID.Error.self) {
+                _ = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<@example.com>"))
+            }
+        }
+
+        @Test
+        func `Fails with empty id-right`() throws {
+            #expect(throws: IETF.RFC.`2822`.Message.ID.Error.self) {
+                _ = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<id@>"))
+            }
+        }
+
+        @Test
+        func `Successfully tests equality`() throws {
+            let id1 = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<id@example.com>"))
+            let id2 = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<id@example.com>"))
+            let id3 = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<other@example.com>"))
+            #expect(id1 == id2)
+            #expect(id1 != id3)
+        }
+
+        @Test
+        func `Successfully tests case-insensitive id-right`() throws {
+            let id1 = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<id@EXAMPLE.COM>"))
+            let id2 = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<id@example.com>"))
+            #expect(id1 == id2)
+        }
+
+        @Test
+        func `Successfully tests hashable`() throws {
+            var set: Set<IETF.RFC.`2822`.Message.ID> = []
+            set.insert(try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<id@example.com>")))
+            set.insert(try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<id@example.com>")))
+            set.insert(try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<other@example.com>")))
+            #expect(set.count == 2)
+        }
+
+        @Test
+        func `Successfully encodes and decodes`() throws {
+            let original = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<id@example.com>"))
+            let encoded = try JSONEncoder().encode(original)
+            let decoded = try JSONDecoder().decode(IETF.RFC.`2822`.Message.ID.self, from: encoded)
+            #expect(original == decoded)
+        }
+
+        @Test
+        func `Successfully serializes to string`() throws {
+            let id = try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<unique-id@example.com>"))
+            #expect(String(id) == "<unique-id@example.com>")
+        }
+    }
+}
+
+enum `IETF.RFC.2822.Timestamp Tests` {}
+
+extension `IETF.RFC.2822.Timestamp Tests` {
+    @Suite
+    struct Test {
+        @Test
+        func `Timestamp creation`() {
+            let timestamp = IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 0.0)
+            #expect(timestamp.secondsSinceEpoch == 0.0)
+        }
+
+        @Test
+        func `Timestamp equality`() {
+            let timestamp1 = IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1000.0)
+            let timestamp2 = IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1000.0)
+            let timestamp3 = IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 2000.0)
+
+            #expect(timestamp1 == timestamp2)
+            #expect(timestamp1 != timestamp3)
+        }
+
+        @Test
+        func `Timestamp hashable`() {
+            var set: Set<IETF.RFC.`2822`.Timestamp> = []
+
+            set.insert(IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1000.0))
+            set.insert(IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1000.0))
+            set.insert(IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 2000.0))
+
+            #expect(set.count == 2)
+        }
+
+        @Test
+        func `Successfully parses timestamp from bytes`() throws {
+            let timestamp = try IETF.RFC.`2822`.Timestamp(
+                ascii: [Byte](utf8: "Fri, 13 Feb 2009 23:31:30 +0000")
+            )
+            #expect(timestamp.secondsSinceEpoch == 1234567890.0)
+        }
+
+        @Test
+        func `Successfully parses timestamp with whitespace`() throws {
+            let timestamp = try IETF.RFC.`2822`.Timestamp(
+                ascii: [Byte](utf8: "  Fri, 13 Feb 2009 23:31:30 +0000  ")
+            )
+            #expect(timestamp.secondsSinceEpoch == 1234567890.0)
+        }
+
+        @Test
+        func `Fails with empty input`() throws {
+            #expect(throws: IETF.RFC.`2822`.Timestamp.Error.empty) {
+                _ = try IETF.RFC.`2822`.Timestamp(ascii: [Byte](utf8: ""))
+            }
+        }
+
+        @Test
+        func `Fails with invalid format`() throws {
+            #expect(throws: IETF.RFC.`2822`.Timestamp.Error.self) {
+                _ = try IETF.RFC.`2822`.Timestamp(ascii: [Byte](utf8: "not-a-number"))
+            }
+        }
+
+        @Test
+        func `Successfully encodes and decodes`() throws {
+            let original = IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1234567890.0)
+            let encoded = try JSONEncoder().encode(original)
+            let decoded = try JSONDecoder().decode(IETF.RFC.`2822`.Timestamp.self, from: encoded)
+            #expect(original == decoded)
+        }
+    }
+}
+
+extension `IETF.RFC.2822.Timestamp Tests`.Test {
+
+    @Suite
+    struct `Edge Case` {
+        @Test
+        func `Parses the RFC 2822 example date-time and recovers the correct epoch and fields`()
+            throws
+        {
+            let timestamp = try IETF.RFC.`2822`.Timestamp(
+                ascii: [Byte](utf8: "Fri, 21 Nov 1997 09:55:06 -0600")
+            )
+            #expect(timestamp.secondsSinceEpoch == 880127706.0)
+            #expect(timestamp.dayOfWeek == .friday)
+            #expect(timestamp.day == 21)
+            #expect(timestamp.month == .november)
+            #expect(timestamp.year == 1997)
+            #expect(timestamp.hour == 9)
+            #expect(timestamp.minute == 55)
+            #expect(timestamp.second == 6)
+            #expect(timestamp.zone == .offset(minutes: -360))
+        }
+
+        @Test
+        func `Round-trips a generated timestamp through serialize and parse`() throws {
+            let original = IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1_234_567_890)
+            var ascii: [ASCII.Code] = []
+            IETF.RFC.`2822`.Timestamp.serialize(original, into: &ascii)
+            #expect(
+                String(decoding: ascii.map(\.byte), as: UTF8.self)
+                    == "Fri, 13 Feb 2009 23:31:30 +0000"
+            )
+            let reparsed = try IETF.RFC.`2822`.Timestamp(ascii: ascii.map(\.byte))
+            #expect(reparsed.secondsSinceEpoch == original.secondsSinceEpoch)
+        }
+
+        @Test
+        func `Applies obs-year two-digit century normalization`() throws {
+            let timestamp = try IETF.RFC.`2822`.Timestamp(ascii: [Byte](utf8: "21 Nov 97 09:55:06 GMT"))
+            #expect(timestamp.year == 1997)
+            #expect(timestamp.secondsSinceEpoch == 880106106.0)
+        }
+
+        @Test
+        func `Treats an unrecognized single-letter obs-zone as unknown, equivalent to -0000`()
+            throws
+        {
+            let timestamp = try IETF.RFC.`2822`.Timestamp(ascii: [Byte](utf8: "21 Nov 1997 09:55:06 Z"))
+            #expect(timestamp.zone == .unknown)
+        }
+
+        @Test
+        func `Treats -0000 as unknown but +0000 as a known UTC offset`() throws {
+            let unknown = try IETF.RFC.`2822`.Timestamp(ascii: [Byte](utf8: "21 Nov 1997 09:55:06 -0000"))
+            let known = try IETF.RFC.`2822`.Timestamp(ascii: [Byte](utf8: "21 Nov 1997 09:55:06 +0000"))
+            #expect(unknown.zone == .unknown)
+            #expect(known.zone == .offset(minutes: 0))
+
+            #expect(unknown.secondsSinceEpoch == known.secondsSinceEpoch)
+        }
+
+        @Test
+        func `Rejects a bare numeric epoch string (the pre-fix wire form)`() throws {
+            #expect(throws: IETF.RFC.`2822`.Timestamp.Error.self) {
+                _ = try IETF.RFC.`2822`.Timestamp(ascii: [Byte](utf8: "1234567890"))
+            }
+        }
+    }
+}
+
+extension `IETF.RFC.2822.Timestamp Tests`.Test {
+
+    @Suite
+    struct Integration {
+        @Test
+        func `Mailgun canonical UTC form round-trips byte-identically`() throws {
+            let wire = "Fri, 13 Feb 2009 23:31:30 +0000"
+            let parsed = try IETF.RFC.`2822`.Timestamp(ascii: [Byte](utf8: wire))
+            #expect(parsed.description == wire)
+            var bytes: [Byte] = []
+            IETF.RFC.`2822`.Timestamp.serialize(parsed, into: &bytes)
+            #expect(String(decoding: bytes, as: UTF8.self) == wire)
+        }
+
+        @Test
+        func `Mailgun-shaped non-UTC offset form round-trips byte-identically`() throws {
+            let wire = "Thu, 13 Oct 2011 18:02:00 +0200"
+            let parsed = try IETF.RFC.`2822`.Timestamp(ascii: [Byte](utf8: wire))
+            #expect(parsed.description == wire)
+            #expect(parsed.zone == .offset(minutes: 120))
+            let reparsed = try IETF.RFC.`2822`.Timestamp(ascii: [Byte](utf8: parsed.description))
+            #expect(reparsed == parsed)
+        }
+
+        @Test
+        func `Epoch-constructed timestamp prints the exact mailgun formatter output`() {
+
+            let timestamp = IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1_234_567_890)
+            #expect(timestamp.description == "Fri, 13 Feb 2009 23:31:30 +0000")
+        }
+    }
+}
+
+enum `IETF.RFC.2822.Fields Tests` {}
+
+extension `IETF.RFC.2822.Fields Tests` {
+    @Suite
+    struct Test {
+        @Test
+        func `Successfully creates fields with required fields`() throws {
+            let fields = try IETF.RFC.`2822`.Fields(
+                originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1_234_567_890),
+                from: [
+                    try IETF.RFC.`2822`.Mailbox(
+                        displayName: nil,
+                        emailAddress: try IETF.RFC.`2822`.AddrSpec(
+                            localPart: "sender",
+                            domain: .init("example.com")
+                        )
+                    )
+                ]
+            )
+            #expect(fields.from.count == 1)
+            #expect(fields.originationDate.secondsSinceEpoch == 1_234_567_890)
+        }
+
+        @Test
+        func `Successfully creates fields with optional fields`() throws {
+            let fields = try IETF.RFC.`2822`.Fields(
+                originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1_234_567_890),
+                from: [
+                    try IETF.RFC.`2822`.Mailbox(
+                        displayName: "Sender",
+                        emailAddress: try IETF.RFC.`2822`.AddrSpec(
+                            localPart: "sender",
+                            domain: .init("example.com")
+                        )
+                    )
+                ],
+                messageID: try IETF.RFC.`2822`.Message.ID(idLeft: "unique", idRight: "example.com"),
+                subject: "Test Subject"
+            )
+            #expect(fields.subject == "Test Subject")
+            #expect(fields.messageID?.idLeft == "unique")
+        }
+
+        @Test
+        func `Successfully parses fields from bytes`() throws {
+            let raw =
+                "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: sender@example.com\r\nSubject: Test"
+            let fields = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+            #expect(fields.subject == "Test")
+            #expect(fields.from.count == 1)
+            #expect(fields.originationDate.secondsSinceEpoch == 1234567890.0)
+        }
+
+        @Test
+        func `Fails with empty input`() throws {
+            #expect(throws: IETF.RFC.`2822`.Fields.Error.empty) {
+                _ = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: ""))
+            }
+        }
+
+        @Test
+        func `Fails with missing Date field`() throws {
+            let raw = "From: sender@example.com\r\n"
+            #expect(throws: IETF.RFC.`2822`.Fields.Error.self) {
+                _ = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+            }
+        }
+
+        @Test
+        func `Fails with missing From field`() throws {
+            let raw = "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\n"
+            #expect(throws: IETF.RFC.`2822`.Fields.Error.self) {
+                _ = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+            }
+        }
+
+        @Test
+        func `Successfully tests equality`() throws {
+            let f1 = try IETF.RFC.`2822`.Fields(
+                originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1000),
+                from: [
+                    try IETF.RFC.`2822`.Mailbox(
+                        displayName: nil,
+                        emailAddress: try IETF.RFC.`2822`.AddrSpec(
+                            localPart: "a",
+                            domain: .init("b.com")
+                        )
+                    )
+                ]
+            )
+            let f2 = try IETF.RFC.`2822`.Fields(
+                originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1000),
+                from: [
+                    try IETF.RFC.`2822`.Mailbox(
+                        displayName: nil,
+                        emailAddress: try IETF.RFC.`2822`.AddrSpec(
+                            localPart: "a",
+                            domain: .init("b.com")
+                        )
+                    )
+                ]
+            )
+            #expect(f1 == f2)
+        }
+
+        @Test
+        func `Successfully encodes and decodes`() throws {
+            let original = try IETF.RFC.`2822`.Fields(
+                originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1_234_567_890),
+                from: [
+                    try IETF.RFC.`2822`.Mailbox(
+                        displayName: nil,
+                        emailAddress: try IETF.RFC.`2822`.AddrSpec(
+                            localPart: "test",
+                            domain: .init("example.com")
+                        )
+                    )
+                ],
+                subject: "Test"
+            )
+            let encoded = try JSONEncoder().encode(original)
+            let decoded = try JSONDecoder().decode(IETF.RFC.`2822`.Fields.self, from: encoded)
+            #expect(original == decoded)
+        }
+    }
+}
+
+extension `IETF.RFC.2822.Fields Tests`.Test {
+
+    @Suite
+    struct `Edge Case` {
+        @Test
+        func `Parses a single From mailbox whose quoted display name contains a comma`() throws {
+            let raw =
+                "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: \"Doe, John\" <john@example.com>\r\n"
+            let fields = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+            #expect(fields.from.count == 1)
+            #expect(fields.from.first?.displayName == "Doe, John")
+            #expect(fields.from.first?.emailAddress.localPart == "john")
+        }
+
+        @Test
+        func `Parses a To list with two comma-bearing quoted display names as two mailboxes`()
+            throws
+        {
+            let raw =
+                "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: sender@example.com\r\n"
+                + "To: \"Doe, John\" <john@example.com>, \"Roe, Jane\" <jane@example.com>\r\n"
+            let fields = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+            #expect(fields.to?.count == 2)
+        }
+    }
+}
+
+enum `IETF.RFC.2822.Message Tests` {}
+
+extension `IETF.RFC.2822.Message Tests` {
+    @Suite
+    struct Test {
+        @Test
+        func `Successfully creates message with fields only`() throws {
+            let fields = try IETF.RFC.`2822`.Fields(
+                originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1_234_567_890),
+                from: [
+                    try IETF.RFC.`2822`.Mailbox(
+                        displayName: nil,
+                        emailAddress: try IETF.RFC.`2822`.AddrSpec(
+                            localPart: "sender",
+                            domain: .init("example.com")
+                        )
+                    )
+                ]
+            )
+            let message = IETF.RFC.`2822`.Message(fields: fields)
+            #expect(message.body == nil)
+        }
+
+        @Test
+        func `Successfully creates message with body`() throws {
+            let fields = try IETF.RFC.`2822`.Fields(
+                originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1_234_567_890),
+                from: [
+                    try IETF.RFC.`2822`.Mailbox(
+                        displayName: nil,
+                        emailAddress: try IETF.RFC.`2822`.AddrSpec(
+                            localPart: "sender",
+                            domain: .init("example.com")
+                        )
+                    )
+                ]
+            )
+            let message = IETF.RFC.`2822`.Message(fields: fields, body: "Hello, World!")
+            #expect(message.body != nil)
+        }
+
+        @Test
+        func `Successfully parses message from bytes`() throws {
+            let raw =
+                "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: sender@example.com\r\nSubject: Test\r\n\r\nThis is the body."
+            let message = try IETF.RFC.`2822`.Message(binary: [Byte](utf8: raw))
+            #expect(message.fields.subject == "Test")
+            #expect(message.body != nil)
+        }
+
+        @Test
+        func `Successfully parses message without body`() throws {
+            let raw = "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: sender@example.com"
+            let message = try IETF.RFC.`2822`.Message(binary: [Byte](utf8: raw))
+            #expect(message.body == nil)
+        }
+
+        @Test
+        func `Fails with empty input`() throws {
+            #expect(throws: IETF.RFC.`2822`.Message.Error.empty) {
+                _ = try IETF.RFC.`2822`.Message(binary: [Byte](utf8: ""))
+            }
+        }
+
+        @Test
+        func `Successfully tests equality`() throws {
+            let fields = try IETF.RFC.`2822`.Fields(
+                originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1000),
+                from: [
+                    try IETF.RFC.`2822`.Mailbox(
+                        displayName: nil,
+                        emailAddress: try IETF.RFC.`2822`.AddrSpec(
+                            localPart: "a",
+                            domain: .init("b.com")
+                        )
+                    )
+                ]
+            )
+            let m1 = IETF.RFC.`2822`.Message(fields: fields, body: "test")
+            let m2 = IETF.RFC.`2822`.Message(fields: fields, body: "test")
+            #expect(m1 == m2)
+        }
+
+        @Test
+        func `Successfully encodes and decodes`() throws {
+            let fields = try IETF.RFC.`2822`.Fields(
+                originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1_234_567_890),
+                from: [
+                    try IETF.RFC.`2822`.Mailbox(
+                        displayName: nil,
+                        emailAddress: try IETF.RFC.`2822`.AddrSpec(
+                            localPart: "test",
+                            domain: .init("example.com")
+                        )
+                    )
+                ]
+            )
+            let original = IETF.RFC.`2822`.Message(fields: fields)
+            let encoded = try JSONEncoder().encode(original)
+            let decoded = try JSONDecoder().decode(IETF.RFC.`2822`.Message.self, from: encoded)
+            #expect(original.fields.originationDate == decoded.fields.originationDate)
+            #expect(original.fields.from.count == decoded.fields.from.count)
+            #expect(decoded.body == nil)
+        }
+    }
+}
+
+enum `IETF.RFC.2822.Message.Body Tests` {}
+
+extension `IETF.RFC.2822.Message.Body Tests` {
+    @Suite
+    struct Test {
+        @Test
+        func `Successfully creates body from string`() {
+            let body = IETF.RFC.`2822`.Message.Body("Hello, World!")
+            #expect(String(body) == "Hello, World!")
+        }
+
+        @Test
+        func `Successfully creates body from bytes`() {
+            let bytes = [Byte](utf8: "Hello")
+            let body = IETF.RFC.`2822`.Message.Body(bytes)
+            #expect(body.bytes == bytes)
+        }
+
+        @Test
+        func `Successfully creates body using string literal`() {
+            let body: IETF.RFC.`2822`.Message.Body = "Test body"
+            #expect(String(body) == "Test body")
+        }
+
+        @Test
+        func `Successfully parses body from raw bytes`() {
+            let body = IETF.RFC.`2822`.Message.Body(binary: [Byte](utf8: "Test content"))
+            #expect(String(body) == "Test content")
+        }
+
+        @Test
+        func `Successfully tests equality`() {
+            let b1 = IETF.RFC.`2822`.Message.Body("Hello")
+            let b2 = IETF.RFC.`2822`.Message.Body("Hello")
+            let b3 = IETF.RFC.`2822`.Message.Body("World")
+            #expect(b1 == b2)
+            #expect(b1 != b3)
+        }
+
+        @Test
+        func `Successfully tests hashable`() {
+            var set: Set<IETF.RFC.`2822`.Message.Body> = []
+            set.insert(IETF.RFC.`2822`.Message.Body("Hello"))
+            set.insert(IETF.RFC.`2822`.Message.Body("Hello"))
+            set.insert(IETF.RFC.`2822`.Message.Body("World"))
+            #expect(set.count == 2)
+        }
+
+        @Test
+        func `Successfully encodes and decodes`() throws {
+            let original = IETF.RFC.`2822`.Message.Body("Test body content")
+            let encoded = try JSONEncoder().encode(original)
+            let decoded = try JSONDecoder().decode(IETF.RFC.`2822`.Message.Body.self, from: encoded)
+            #expect(original == decoded)
+        }
+    }
+}
+
+enum `IETF.RFC.2822 Tests` {}
+
+extension `IETF.RFC.2822 Tests` {
+    @Suite
+    struct `RFC 2822 [FAM-012] ASCII==Binary Equivalence` {
+        private func addrSpec() throws -> IETF.RFC.`2822`.AddrSpec {
+            try IETF.RFC.`2822`.AddrSpec(localPart: "john", domain: .init("example.com"))
+        }
+        private func mailbox() throws -> IETF.RFC.`2822`.Mailbox {
+
+            try IETF.RFC.`2822`.Mailbox(displayName: "Doe, John", emailAddress: try addrSpec())
+        }
+
+        @Test func `AddrSpec verbs agree`() throws {
+            let value = try IETF.RFC.`2822`.AddrSpec(localPart: "user", domain: .init("example.com"))
+            var ascii: [ASCII.Code] = []
+            IETF.RFC.`2822`.AddrSpec.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            IETF.RFC.`2822`.AddrSpec.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
+
+        @Test func `Timestamp verbs agree`() {
+            let value = IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1_234_567_890)
+            var ascii: [ASCII.Code] = []
+            IETF.RFC.`2822`.Timestamp.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            IETF.RFC.`2822`.Timestamp.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
+
+        @Test func `NameValuePair verbs agree`() {
+            let value = IETF.RFC.`2822`.Message.Received.NameValuePair(name: "from", value: "mail.example.com")
+            var ascii: [ASCII.Code] = []
+            IETF.RFC.`2822`.Message.Received.NameValuePair.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            IETF.RFC.`2822`.Message.Received.NameValuePair.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
+
+        @Test func `Mailbox verbs agree (escaped display name)`() throws {
+            let value = try mailbox()
+            var ascii: [ASCII.Code] = []
+            IETF.RFC.`2822`.Mailbox.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            IETF.RFC.`2822`.Mailbox.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
+
+        @Test func `Message.Path verbs agree`() throws {
+            let value = IETF.RFC.`2822`.Message.Path(addrSpec: try addrSpec())
+            var ascii: [ASCII.Code] = []
+            IETF.RFC.`2822`.Message.Path.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            IETF.RFC.`2822`.Message.Path.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
+
+        @Test func `Address verbs agree (group)`() throws {
+            let value = try IETF.RFC.`2822`.Address(.group("Team", [try mailbox(), try mailbox()]))
+            var ascii: [ASCII.Code] = []
+            IETF.RFC.`2822`.Address.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            IETF.RFC.`2822`.Address.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
+
+        @Test func `Message.Received verbs agree`() throws {
+            let value = IETF.RFC.`2822`.Message.Received(
+                tokens: [
+                    IETF.RFC.`2822`.Message.Received.NameValuePair(name: "from", value: "mx.example.org")
+                ],
+                timestamp: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1_234_567_890)
+            )
+            var ascii: [ASCII.Code] = []
+            IETF.RFC.`2822`.Message.Received.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            IETF.RFC.`2822`.Message.Received.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
+
+        @Test func `Message.ResentBlock verbs agree`() throws {
+            let value = IETF.RFC.`2822`.Message.ResentBlock(
+                timestamp: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1_234_567_890),
+                from: [try mailbox()],
+                to: [try IETF.RFC.`2822`.Address(.mailbox(try mailbox()))]
+            )
+            var ascii: [ASCII.Code] = []
+            IETF.RFC.`2822`.Message.ResentBlock.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            IETF.RFC.`2822`.Message.ResentBlock.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
+
+        @Test func `Fields verbs agree (deep composition)`() throws {
+            let value = try IETF.RFC.`2822`.Fields(
+                originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 1_234_567_890),
+                from: [try mailbox()],
+                sender: try mailbox(),
+                to: [try IETF.RFC.`2822`.Address(.mailbox(try mailbox()))],
+                messageID: try IETF.RFC.`2822`.Message.ID(ascii: [Byte](utf8: "<id@example.com>")),
+                subject: "Re: hello"
+            )
+            var ascii: [ASCII.Code] = []
+            IETF.RFC.`2822`.Fields.serialize(value, into: &ascii)
+            var wire: [Byte] = []
+            IETF.RFC.`2822`.Fields.serialize(value, into: &wire)
+            #expect(ascii.map(\.byte) == wire)
+        }
+    }
+}
+
+extension `IETF.RFC.2822.Address Tests`.Test.`Edge Case` {
+
+    @Test
+    func `Rejects a constructed group display name carrying a CRLF header-injection payload`() {
+        #expect(throws: IETF.RFC.`2822`.Address.Error.invalidDisplayName("Team\r\nBcc: victim@example.com")) {
+            _ = try IETF.RFC.`2822`.Address(.group("Team\r\nBcc: victim@example.com", []))
+        }
+    }
+}
+
+extension `IETF.RFC.2822.Message.ID Tests`.Test {
+
+    @Suite
+    struct `Edge Case` {
+        @Test
+        func `Rejects a constructed id-left carrying a CRLF header-injection payload`() {
+            #expect(throws: IETF.RFC.`2822`.Message.ID.Error.invalidIdLeft("a\r\nBcc: x")) {
+                _ = try IETF.RFC.`2822`.Message.ID(idLeft: "a\r\nBcc: x", idRight: "example.com")
+            }
+        }
+
+        @Test
+        func `Rejects a constructed id-right that is not a dot-atom or domain literal`() {
+            #expect(throws: IETF.RFC.`2822`.Message.ID.Error.invalidIdRight("example..com")) {
+                _ = try IETF.RFC.`2822`.Message.ID(idLeft: "abc", idRight: "example..com")
+            }
+        }
+
+        @Test
+        func `Rejects a lone quotation mark as id-left`() {
+            #expect(throws: IETF.RFC.`2822`.Message.ID.Error.invalidIdLeft("\"")) {
+                _ = try IETF.RFC.`2822`.Message.ID(idLeft: "\"", idRight: "example.com")
+            }
+        }
+
+        @Test
+        func `Accepts a quoted id-left and a domain-literal id-right`() throws {
+            let id = try IETF.RFC.`2822`.Message.ID(idLeft: "\"a b\"", idRight: "[127.0.0.1]")
+            #expect(id.description == "<\"a b\"@[127.0.0.1]>")
+        }
+    }
+}
+
+extension `IETF.RFC.2822.Fields Tests`.Test.`Edge Case` {
+
+    private func mailbox(_ localPart: String) throws -> IETF.RFC.`2822`.Mailbox {
+        try IETF.RFC.`2822`.Mailbox(
+            emailAddress: try IETF.RFC.`2822`.AddrSpec(localPart: localPart, domain: .init("example.com"))
+        )
+    }
+
+    @Test
+    func `Rejects several From mailboxes without a Sender at construction`() throws {
+        let from = [try mailbox("a"), try mailbox("b")]
+        #expect(throws: IETF.RFC.`2822`.Fields.Error.missingRequiredField("Sender")) {
+            _ = try IETF.RFC.`2822`.Fields(
+                originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 0),
+                from: from
+            )
+        }
+    }
+
+    @Test
+    func `Accepts several From mailboxes with a Sender`() throws {
+        let fields = try IETF.RFC.`2822`.Fields(
+            originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 0),
+            from: [try mailbox("a"), try mailbox("b")],
+            sender: try mailbox("a")
+        )
+        #expect(fields.from.count == 2)
+    }
+
+    @Test
+    func `Rejects several parsed From mailboxes without a Sender`() {
+        let raw =
+            "Date: Fri, 13 Feb 2009 23:31:30 +0000\r\nFrom: a@example.com, b@example.com\r\n"
+        #expect(throws: IETF.RFC.`2822`.Fields.Error.missingRequiredField("Sender")) {
+            _ = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+        }
+    }
+
+    @Test
+    func `Rejects an empty From list at construction`() {
+        #expect(throws: IETF.RFC.`2822`.Fields.Error.missingRequiredField("From")) {
+            _ = try IETF.RFC.`2822`.Fields(originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 0), from: [])
+        }
+    }
+
+    @Test
+    func `Rejects a Subject carrying a CRLF header-injection payload`() throws {
+        let from = [try mailbox("a")]
+        #expect(throws: IETF.RFC.`2822`.Fields.Error.invalidFieldFormat("Subject", "Hi\r\nBcc: x@example.com")) {
+            _ = try IETF.RFC.`2822`.Fields(
+                originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 0),
+                from: from,
+                subject: "Hi\r\nBcc: x@example.com"
+            )
+        }
+    }
+
+    @Test
+    func `Rejects Comments carrying a bare LF`() throws {
+        let from = [try mailbox("a")]
+        #expect(throws: IETF.RFC.`2822`.Fields.Error.invalidFieldFormat("Comments", "a\nb")) {
+            _ = try IETF.RFC.`2822`.Fields(
+                originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 0),
+                from: from,
+                comments: "a\nb"
+            )
+        }
+    }
+
+    @Test
+    func `Rejects a keyword carrying a CR`() throws {
+        let from = [try mailbox("a")]
+        #expect(throws: IETF.RFC.`2822`.Fields.Error.invalidFieldFormat("Keywords", "b\rc")) {
+            _ = try IETF.RFC.`2822`.Fields(
+                originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 0),
+                from: from,
+                keywords: ["a", "b\rc"]
+            )
+        }
+    }
+
+    @Test
+    func `Accepts a Subject with a horizontal tab`() throws {
+        let fields = try IETF.RFC.`2822`.Fields(
+            originationDate: IETF.RFC.`2822`.Timestamp(secondsSinceEpoch: 0),
+            from: [try mailbox("a")],
+            subject: "a\tb"
+        )
+        #expect(fields.subject == "a\tb")
+    }
+}
+
+extension `IETF.RFC.2822.Fields Tests`.Test {
+
+    @Suite
+    struct `Trace and Resent` {
+        @Test
+        func `Parses the RFC 2822 appendix A.4 trace fields in order`() throws {
+            let raw =
+                "Received: from x.y.test\r\n"
+                + "   by example.net\r\n"
+                + "   via TCP\r\n"
+                + "   with ESMTP\r\n"
+                + "   id ABC12345\r\n"
+                + "   for <mary@example.net>;  21 Nov 1997 10:05:43 -0600\r\n"
+                + "Received: from machine.example by x.y.test; 21 Nov 1997 10:01:22 -0600\r\n"
+                + "From: John Doe <jdoe@machine.example>\r\n"
+                + "To: Mary Smith <mary@example.net>\r\n"
+                + "Subject: Saying Hello\r\n"
+                + "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "Message-ID: <1234@local.machine.example>\r\n"
+            let fields = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+            #expect(fields.receivedFields.count == 2)
+            #expect(fields.receivedFields.first?.tokens.first?.value == "x.y.test")
+            #expect(fields.receivedFields.last?.tokens.first?.value == "machine.example")
+            #expect(fields.returnPath == nil)
+        }
+
+        @Test
+        func `Parses the RFC 2822 appendix A.3 resent block`() throws {
+            let raw =
+                "Resent-From: Mary Smith <mary@example.net>\r\n"
+                + "Resent-To: Jane Brown <j-brown@other.example>\r\n"
+                + "Resent-Date: Mon, 24 Nov 1997 14:22:01 -0800\r\n"
+                + "Resent-Message-ID: <78910@example.net>\r\n"
+                + "From: John Doe <jdoe@machine.example>\r\n"
+                + "To: Mary Smith <mary@example.net>\r\n"
+                + "Subject: Saying Hello\r\n"
+                + "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "Message-ID: <1234@local.machine.example>\r\n"
+            let fields = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+            #expect(fields.resentFields.count == 1)
+            #expect(fields.resentFields.first?.from.first?.emailAddress.localPart == "mary")
+            #expect(fields.resentFields.first?.messageID?.idLeft == "78910")
+            #expect(fields.resentFields.first?.to?.count == 1)
+        }
+
+        @Test
+        func `Parses Return-Path, repeated Received and two resent blocks, and round-trips`() throws {
+            let raw =
+                "Return-Path: <jdoe@machine.example>\r\n"
+                + "Received: from a.example by b.example; Mon, 24 Nov 1997 14:22:05 -0800\r\n"
+                + "Received: from c.example by a.example; Mon, 24 Nov 1997 14:22:03 -0800\r\n"
+                + "Resent-Date: Mon, 24 Nov 1997 14:22:01 -0800\r\n"
+                + "Resent-From: mary@example.net\r\n"
+                + "Resent-Date: Sun, 23 Nov 1997 10:00:00 -0800\r\n"
+                + "Resent-From: jane@example.net\r\n"
+                + "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "From: jdoe@machine.example\r\n"
+            let fields = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+            #expect(fields.returnPath?.addrSpec?.localPart == "jdoe")
+            #expect(fields.receivedFields.count == 2)
+            #expect(fields.resentFields.count == 2)
+            #expect(fields.resentFields.first?.from.first?.emailAddress.localPart == "mary")
+            #expect(fields.resentFields.last?.from.first?.emailAddress.localPart == "jane")
+            let reparsed = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: fields.description))
+            #expect(reparsed == fields)
+        }
+
+        @Test
+        func `Rejects a Return-Path that no Received follows`() {
+            let raw =
+                "Return-Path: <jdoe@machine.example>\r\n"
+                + "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "From: jdoe@machine.example\r\n"
+            #expect(throws: IETF.RFC.`2822`.Fields.Error.misplacedField("Return-Path")) {
+                _ = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+            }
+        }
+
+        @Test
+        func `Rejects a Received after the origination fields`() {
+            let raw =
+                "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "From: jdoe@machine.example\r\n"
+                + "Received: from a.example by b.example; Mon, 24 Nov 1997 14:22:05 -0800\r\n"
+            #expect(throws: IETF.RFC.`2822`.Fields.Error.misplacedField("Received")) {
+                _ = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+            }
+        }
+
+        @Test
+        func `Rejects a resent field after the origination fields`() {
+            let raw =
+                "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "From: jdoe@machine.example\r\n"
+                + "Resent-From: mary@example.net\r\n"
+            #expect(throws: IETF.RFC.`2822`.Fields.Error.misplacedField("Resent-From")) {
+                _ = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+            }
+        }
+
+        @Test
+        func `Rejects a resent block without Resent-Date`() {
+            let raw =
+                "Resent-From: mary@example.net\r\n"
+                + "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "From: jdoe@machine.example\r\n"
+            #expect(throws: IETF.RFC.`2822`.Fields.Error.self) {
+                _ = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+            }
+        }
+
+        @Test
+        func `Rejects a resent block with an unparseable Resent-From`() {
+            let raw =
+                "Resent-Date: Mon, 24 Nov 1997 14:22:01 -0800\r\n"
+                + "Resent-From: not an address\r\n"
+                + "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "From: jdoe@machine.example\r\n"
+            #expect(throws: IETF.RFC.`2822`.Fields.Error.self) {
+                _ = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+            }
+        }
+
+        @Test
+        func `Rejects an unparseable Received`() {
+            let raw =
+                "Received: from a.example by b.example\r\n"
+                + "Date: Fri, 21 Nov 1997 09:55:06 -0600\r\n"
+                + "From: jdoe@machine.example\r\n"
+            #expect(throws: IETF.RFC.`2822`.Fields.Error.self) {
+                _ = try IETF.RFC.`2822`.Fields(ascii: [Byte](utf8: raw))
+            }
+        }
+    }
+}
+
+extension `IETF.RFC.2822.Fields Tests`.Test.`Edge Case` {
+
+    @Test
+    func `Resent block parsing rejects a Resent-To it cannot parse`() {
+        let raw =
+            "Resent-Date: Mon, 24 Nov 1997 14:22:01 -0800\r\n"
+            + "Resent-From: mary@example.net\r\n"
+            + "Resent-To: <broken\r\n"
+        #expect(throws: IETF.RFC.`2822`.Message.ResentBlock.Error.self) {
+            _ = try IETF.RFC.`2822`.Message.ResentBlock(ascii: [Byte](utf8: raw))
+        }
+    }
+}
