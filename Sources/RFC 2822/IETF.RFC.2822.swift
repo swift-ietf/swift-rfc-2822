@@ -1,5 +1,5 @@
-public import IETF_RFC
 import ASCII
+public import IETF_RFC
 import INCITS_4_1986
 
 extension IETF.RFC {
